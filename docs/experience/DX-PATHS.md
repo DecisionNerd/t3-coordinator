@@ -1,111 +1,78 @@
 # DX paths
 
-Three ways to use the coordinator. GitHub (or your tracker) holds intent; the coordinator holds durable handoffs. Journeys assume a project checkout in T3 — start with [dev-skills](https://github.com/DecisionNerd/dev-skills) or whatever you set in [TESTBED.md](TESTBED.md).
+How to talk to **@t3-coordinator** (MCP `run` phrase or typed tools). GitHub holds intent; the coordinator shapes backlog **and** runs durable handoffs.
 
-Helpers named below (DocSlime, RedTeam, `recon`, …) are optional — use them if you have them, or the equivalent steps by hand. To change the defaults, edit your [profile](OPERATING-PROFILE.md).
+Set defaults once (`t3-coordinator defaults-set …`) and bind a supervisor thread before execute phrases.
 
-## At a glance
+## Phrases (after @t3-coordinator)
 
-| Your work item | Coordinator |
-|---|---|
-| Milestone | Many turns; close criteria stay on the milestone |
-| Issue | One `assign_work` → one delivery SHA → review |
-| Issue + BDD | Committed `specSha` (oral assign does not count) |
-| Plan | Spec commit before dispatch |
-| Implementation | Worker in an isolated worktree + trailer |
-| Review | `submit_review`: ACCEPT \| REVISE \| BLOCKED |
-| Ship | You merge (ACCEPT ≠ merge) |
+| You say | Path | What happens |
+|---|---|---|
+| `192` / `#192` | C | Push that issue (spec commit + assignment) |
+| `complete M2` | B | Push next open issue on milestone M2 |
+| `complete epic 50` | D | Push next open **child** of parent issue #50 (milestone optional) |
+| `status 192` / `plan 192` / `critique 192` / `refine 192` … | Issue admin | Shape / review (mutations need `issue` tool + `apply:true`) |
+| `status M2` / `plan milestone M2` / `create milestone …` / `close M2` | Milestone admin | Full milestone lifecycle |
+| `epic 50` / `status epic 50` / `create epic …` / `close epic 50` | Epic admin | Parent tracker lifecycle |
 
-```mermaid
-flowchart LR
-  You["You"] --> GH["Issue / milestone"]
-  You --> T3["Supervisor thread"]
-  GH -->|"specSha"| Sup["Frontier supervisor"]
-  T3 --> Sup
-  Sup -->|"assign_work"| Coord["Coordinator"]
-  Coord --> W["Worker + worktree"]
-  W -->|"deliverySha"| Coord
-  Coord -->|"mailbox"| Sup
-  Sup -->|"submit_review"| Coord
-  Sup -->|"ACCEPT"| You
-  You --> PR["PR / merge"]
-```
+Typed tools: `run`, `issue`, `milestone`, `epic`, `push_issue`, `complete_milestone`, `complete_epic`, plus low-level assign/review.
+
+Mutating GitHub (`create` / `update` / `refine` / `close` / …) **previews** from `run` phrases; call `issue` / `milestone` / `epic` with `apply: true` to write.
 
 ---
 
 ## Path A — Design → plan → implement → review
 
-**When:** New API, UX contract, or risky refactor. You and the supervisor keep judgment; the worker does the mechanical build.
-
-1. **Design** — Capture constraints on the issue (or a design note). Tighten docs if you use DocSlime; critique the frame if you use RedTeam/Impeccable.  
-2. **Plan** — Falsifiable plan: files, risks, BDD, stop conditions. Commit it → **`specSha`**.  
-3. **Assign** — Supervisor `assign_work` with `specSha`, `baseCommit`, goal, worker model.  
-4. **Implement** — Worker in an isolated worktree. Delivery = commit message containing `Coordinated-By: <assignmentId>`.  
-5. **Review** — Mailbox wakes the supervisor when idle. `submit_review`: REVISE (continue), ACCEPT (ready for PR), or BLOCKED (human).  
-6. **Integrate** — You open/land the PR. Coordinator does not auto-merge.
-
-**Checklist**
-
-- [ ] Issue with BDD scenarios  
-- [ ] Spec committed (`specSha`)  
-- [ ] Supervisor bound; MCP on supervisor only  
-- [ ] `assignmentId` returned  
-- [ ] Delivery SHA (not just “done”)  
-- [ ] Review verdict  
-- [ ] PR linked to the issue  
+Shape with `critique` / `plan` / `refine` on the issue, then `192` to dispatch. Review via mailbox + `submit_review`.
 
 ---
 
-## Path B — Milestone (many turns)
+## Path B — Milestone campaign
 
-**When:** A release-shaped slice with several issues. Expect many supervisor/worker turns; durability matters.
-
-**Shape on GitHub:** milestone title, close criteria, issue list. Keep WIP honest before flooding workers. Default order = **next critical-path open issue**, not “spawn everyone.”
-
-**Each issue**
-
-| Beat | Who | Action |
-|---|---|---|
-| Orient | Supervisor | Milestone + next issue still unblocked? |
-| Spec | You / supervisor | Plan committed (`specSha`) |
-| Dispatch | Supervisor | `assign_work` |
-| Wait | Coordinator | Turn-end → delivery → mailbox |
-| Judge | Supervisor | `submit_review` until ACCEPT or BLOCKED |
-| Land | You | PR + merge |
-| Advance | Supervisor | Next issue |
-
-**Rules of thumb:** one implementation worker per issue in v0; `pause_work` if the supervisor thread needs a design digression; `cancel_work` if the issue dies; finish REVISE before opening another front.
-
-**Supervisor prompt skeleton**
-
-```text
-Repo: <T3 project>.
-Milestone: <title> — close when <criteria>.
-Critical-path issue: #<n> — <title>.
-Spec: <specSha> at base <baseCommit>.
-Implement only that issue’s acceptance scenarios.
-Review against the issue BDD; ACCEPT only with matching evidence.
-Do not start the next issue until ACCEPT or BLOCKED with a human note.
-```
+1. `create milestone …` (apply) or use an existing M-number.  
+2. `plan M2` / `critique M2` / `narrow` / `widen` until membership is right.  
+3. `complete M2` → one critical-path issue at a time.  
+4. After ACCEPT, `complete M2` again.  
+5. `close M2` (apply) when open issues are gone.
 
 ---
 
 ## Path C — Single issue
 
-**When:** One bug or small feature.
+1. `create issue …` or use `#N`.  
+2. Optional: `plan 192`, `critique 192`, `refine 192` (apply when editing).  
+3. `192` to push.  
+4. `close 192` (apply) when done (or close via PR).
 
-1. Read `#N`.  
-2. Refine only if blocked; otherwise skip admin.  
-3. Plan → commit → `specSha` (skip only if the issue *is* already the committed spec).  
-4. `assign_work` citing `#N` and BDD.  
-5. Delivery + `submit_review`.  
-6. PR that closes `#N`.
+---
 
-| Size | Use |
-|---|---|
-| Trivial typo / one-liner | Fix yourself; skip the coordinator |
-| Bounded feature/bug | Path C |
-| Unclear AC / multi-package | Path A or split under a milestone (B) |
+## Path D — Epic / parent tracker (no milestone required)
+
+An **epic** is a normal GitHub issue that tracks children via:
+
+- Task list in the body: `- [ ] #12`  
+- GitHub sub-issues API (when available)  
+- Search markers: `Epic #50` / `Parent #50` on children  
+
+Flow:
+
+1. `create epic Payment redesign` → preview parent with children template; `epic create` + `apply:true` to open it.  
+2. Add child issues; link them in the epic body (or as sub-issues).  
+3. `status epic 50` / `plan epic 50` / `critique epic 50`.  
+4. `complete epic 50` → pushes the next open child (same durable assign path as Path C).  
+5. Repeat until children are done; `close epic 50` (apply).
+
+Pushing the **parent** number while children remain open is rejected — use `complete epic` or push a child id.
+
+---
+
+## Lifecycle cheat sheet
+
+**Issue:** create → status → critique/plan → refine/narrow/widen/update → push → (review assignment) → close / reopen  
+
+**Milestone:** create → list/status → plan/critique → refine/narrow/widen/update → complete (loop) → close  
+
+**Epic:** create → status/plan/critique → complete (loop over children) → close parent  
 
 ---
 
@@ -113,14 +80,10 @@ Do not start the next issue until ACCEPT or BLOCKED with a human note.
 
 | Don’t | Do |
 |---|---|
-| Treat Temporal as the backlog | Keep issues on GitHub |
-| Assign without `specSha` | Commit the plan first |
-| Point worktree at the main checkout | Let the adapter create `~/.t3-coordinator/worktrees/…` |
-| ACCEPT and assume merged | Run your normal PR path |
+| Treat Temporal as the backlog | Keep issues / milestones / epics on GitHub |
+| Assign without a committed spec | `plan` + `commitSpec` or let push auto-commit a thin spec |
+| Parallelize a whole milestone/epic in v0 | One critical-path child at a time |
 | Give workers coordinator MCP | Supervisor provider only |
-| Parallelize a whole milestone in v0 | One critical-path issue at a time |
-
----
 
 ## Related
 

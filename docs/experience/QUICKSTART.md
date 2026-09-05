@@ -49,6 +49,17 @@ Add MCP on the **supervisor provider only** (not workers):
 
 Optional: copy and edit a workflow profile so helpers match how you work — [OPERATING-PROFILE.md](OPERATING-PROFILE.md).
 
+Point DX phrases at a repo (once per machine / project):
+
+```bash
+t3-coordinator defaults-set \
+  --github-repo owner/repo \
+  --t3-project-id <uuid> \
+  --cwd /path/to/checkout \
+  --instance cursor \
+  --model composer-2.5
+```
+
 ## Every session
 
 ```bash
@@ -57,11 +68,20 @@ t3-coordinator start
 
 Leave that running. The host spawns `t3-coordinator mcp` when the supervisor needs tools — do not start MCP yourself as a second daemon.
 
-## First assignment
+## First assignment (DX)
 
-1. Commit a small plan/spec in the project (`specSha`).  
-2. From the supervisor, call `assign_work` (preferred).  
-3. Wait for delivery; supervisor calls `submit_review` with ACCEPT / REVISE / BLOCKED.
+From the supervisor, after defaults + bind:
+
+| Phrase | Effect |
+|---|---|
+| `192` | Push issue #192 |
+| `complete M2` | Next open issue on milestone M2 |
+| `complete epic 50` | Next open child of parent #50 |
+| `create epic …` / `close 192` / `status M2` | Lifecycle (mutations: tools + `apply:true`) |
+
+Then wait for delivery; supervisor calls `submit_review` with ACCEPT / REVISE / BLOCKED.
+
+Low-level alternative: commit a `specSha`, call `assign_work` directly.
 
 Debug from a coordinator checkout (install-only hosts: skip this and use MCP):
 

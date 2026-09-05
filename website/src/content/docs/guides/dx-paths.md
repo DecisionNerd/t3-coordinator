@@ -1,56 +1,81 @@
 ---
 title: DX paths
-description: Design, milestone, and single-issue journeys with the coordinator.
+description: Issue, milestone, and epic lifecycles with @t3-coordinator phrases.
 ---
 
-Three ways to use the coordinator. GitHub (or your tracker) holds intent; the coordinator holds durable handoffs.
+Talk to **@t3-coordinator** with short phrases (MCP `run`) or typed tools. GitHub holds the backlog; the coordinator shapes it **and** runs durable handoffs.
 
-Helpers named below are optional — use them if you have them, or the equivalent steps by hand. To change defaults, see [Customize your workflow](/t3-coordinator/guides/customize-workflow/).
+Set defaults once (`t3-coordinator defaults-set …`) and bind a supervisor thread before execute phrases.
 
-## At a glance
+## Phrases
 
-| Your work item | Coordinator |
-|---|---|
-| Milestone | Many turns; close criteria stay on the milestone |
-| Issue | One `assign_work` → one delivery SHA → review |
-| Issue + BDD | Committed `specSha` (oral assign does not count) |
-| Implementation | Worker in an isolated worktree + trailer |
-| Review | `submit_review`: ACCEPT \| REVISE \| BLOCKED |
-| Ship | You merge (ACCEPT ≠ merge) |
+| You say | Path | What happens |
+|---|---|---|
+| `192` / `#192` | C | Push that issue (spec commit + assignment) |
+| `complete M2` | B | Push next open issue on milestone M2 |
+| `complete epic 50` | D | Push next open **child** of parent #50 (milestone optional) |
+| `status 192` / `plan 192` / `critique 192` / `refine 192` … | Issue admin | Shape / review (mutations need `issue` + `apply:true`) |
+| `status M2` / `plan milestone M2` / `create milestone …` / `close M2` | Milestone admin | Full milestone lifecycle |
+| `epic 50` / `status epic 50` / `create epic …` / `close epic 50` | Epic admin | Parent tracker lifecycle |
 
-**Flow:** you / GitHub issue → supervisor (`specSha`) → `assign_work` → worker delivery SHA → mailbox → `submit_review` → you merge.
+Typed tools: `run`, `issue`, `milestone`, `epic`, `push_issue`, `complete_milestone`, `complete_epic`, plus low-level assign/review.
+
+`run` **previews** GitHub mutations; call `issue` / `milestone` / `epic` with `apply: true` to write.
 
 ## Path A — Design → plan → implement → review
 
-**When:** New API, UX contract, or risky refactor.
+Shape with `critique` / `plan` / `refine` on the issue, then `192` to dispatch. Review via mailbox + `submit_review`.
 
-1. **Design** — Capture constraints on the issue.
-2. **Plan** — Falsifiable plan with BDD; commit → **`specSha`**.
-3. **Assign** — Supervisor `assign_work`.
-4. **Implement** — Worker worktree; delivery = `Coordinated-By: <assignmentId>` commit.
-5. **Review** — Mailbox wakes supervisor; ACCEPT / REVISE / BLOCKED.
-6. **Integrate** — You land the PR. Coordinator does not auto-merge.
+## Path B — Milestone campaign
 
-## Path B — Milestone (many turns)
-
-**When:** Several issues under one close criteria.
-
-Default order = **next critical-path open issue**, not spawn everyone. For each issue: spec → `assign_work` → wait → `submit_review` → PR → next issue.
-
-**Rules of thumb:** one implementation worker per issue in v0; pause if the supervisor needs a design digression; finish REVISE before opening another front.
+1. `create milestone …` (apply) or use an existing M-number.
+2. `plan M2` / `critique M2` / `narrow` / `widen` until membership is right.
+3. `complete M2` → one critical-path issue at a time.
+4. After ACCEPT, `complete M2` again.
+5. `close M2` (apply) when open issues are gone.
 
 ## Path C — Single issue
 
-**When:** One bug or small feature.
+1. `create issue …` or use `#N`.
+2. Optional: `plan 192`, `critique 192`, `refine 192` (apply when editing).
+3. `192` to push.
+4. `close 192` (apply) when done (or close via PR).
 
-Read `#N` → plan/`specSha` → `assign_work` → review → PR that closes `#N`. Skip the coordinator for trivial one-liners.
+## Path D — Epic / parent tracker (no milestone required)
+
+An **epic** is a normal GitHub issue that tracks children via:
+
+- Task list in the body: `- [ ] #12`
+- GitHub sub-issues API (when available)
+- Search markers: `Epic #50` / `Parent #50` on children
+
+Flow:
+
+1. `create epic Payment redesign` → preview parent; `epic create` + `apply:true` to open it.
+2. Add child issues; link them in the epic body (or as sub-issues).
+3. `status epic 50` / `plan epic 50` / `critique epic 50`.
+4. `complete epic 50` → pushes the next open child.
+5. Repeat until children are done; `close epic 50` (apply).
+
+Pushing the **parent** number while children remain open is rejected — use `complete epic` or push a child id.
+
+## Lifecycle cheat sheet
+
+**Issue:** create → status → critique/plan → refine/narrow/widen/update → push → review → close / reopen
+
+**Milestone:** create → list/status → plan/critique → refine/narrow/widen/update → complete (loop) → close
+
+**Epic:** create → status/plan/critique → complete (loop over children) → close parent
 
 ## Don’t
 
 | Don’t | Do |
 |---|---|
-| Treat Temporal as the backlog | Keep issues on GitHub |
-| Assign without `specSha` | Commit the plan first |
-| Point worktree at the main checkout | Let the adapter create `~/.t3-coordinator/worktrees/…` |
-| ACCEPT and assume merged | Run your normal PR path |
+| Treat Temporal as the backlog | Keep issues / milestones / epics on GitHub |
+| Assign without a committed spec | `plan` + `commitSpec` or let push auto-commit a thin spec |
+| Parallelize a whole milestone/epic in v0 | One critical-path child at a time |
 | Give workers coordinator MCP | Supervisor provider only |
+
+## Related
+
+[Quick start](/t3-coordinator/guides/quick-start/) · [Customize your workflow](/t3-coordinator/guides/customize-workflow/) · [Where work happens](/t3-coordinator/guides/where-work-happens/)

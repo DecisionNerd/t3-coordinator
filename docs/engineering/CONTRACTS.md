@@ -112,7 +112,19 @@ Do not claim success without that commit. The coordinator verifies git, not your
 
 ## MCP tools
 
-All tools return promptly. Long work is Temporal `AssignmentWorkflow`.
+All tools return promptly. Long implementation work is Temporal `AssignmentWorkflow`.
+
+### DX entrypoints
+
+| Tool | Role |
+|---|---|
+| `run` | Freeform phrase router (`192`, `complete M2`, `complete epic 50`, `critique 192`, …) |
+| `issue` | Full issue lifecycle (`status\|plan\|critique\|refine\|update\|narrow\|widen\|explain\|close\|reopen\|create\|push`) |
+| `milestone` | Full milestone lifecycle (`list\|status\|plan\|critique\|…\|create\|complete\|close`) |
+| `epic` | Parent/epic tracker (children via task-list or sub-issues; milestone optional) |
+| `push_issue` / `complete_milestone` / `complete_epic` | Execute next assignment |
+
+GitHub mutations default to **preview**; pass `apply: true` to write.
 
 ### `assign_work`
 

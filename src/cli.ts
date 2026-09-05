@@ -3,6 +3,8 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { bindSupervisor, bindingsPath, getSupervisorBinding } from './domain/bindings';
+import { defaultsPath, readDefaults, writeDefaults } from './domain/defaults';
+import { runDxIntent } from './domain/dx';
 import { credentialsPath, readT3Credentials, writeT3Credentials } from './t3/credentials';
 import { createConfiguredT3Adapter } from './t3/httpAdapter';
 import { FakeT3Adapter } from './t3/adapter';
@@ -11,6 +13,9 @@ function usage(): never {
   console.error(`Usage:
   t3-coordinator start [--no-temporal]
   t3-coordinator mcp
+  t3-coordinator run "<phrase>"          # e.g. "complete M2" or "192"
+  t3-coordinator defaults
+  t3-coordinator defaults-set --github <owner/name> --t3-project <uuid> --cwd <path> --instance <id> --model <id> [--env env-local] [--branch main]
   t3-coordinator bind-supervisor --environment <id> --thread <threadId>
   t3-coordinator get-binding --environment <id>
   t3-coordinator auth-issue [--ttl 30d] [--label t3-coordinator]
@@ -50,6 +55,54 @@ async function main(): Promise<void> {
   if (cmd === 'mcp') {
     const { runMcpServer } = await import('./mcp/server.js');
     await runMcpServer();
+    return;
+  }
+  if (cmd === 'run') {
+    const phrase = args.slice(1).join(' ').trim();
+    if (!phrase) usage();
+    const out = await runDxIntent(phrase);
+    console.log(JSON.stringify(out, null, 2));
+    if (
+      out.result &&
+      typeof out.result === 'object' &&
+      'ok' in out.result &&
+      (out.result as { ok: boolean }).ok === false
+    ) {
+      process.exit(1);
+    }
+    return;
+  }
+  if (cmd === 'defaults') {
+    console.log(
+      JSON.stringify({ ok: true, path: defaultsPath(), defaults: readDefaults() }, null, 2),
+    );
+    return;
+  }
+  if (cmd === 'defaults-set') {
+    const githubRepo = readFlag(args, '--github');
+    const t3ProjectId = readFlag(args, '--t3-project');
+    const projectCwd = readFlag(args, '--cwd');
+    const instanceId = readFlag(args, '--instance');
+    const modelId = readFlag(args, '--model');
+    const environmentId = readFlag(args, '--env') ?? 'env-local';
+    const baseBranch = readFlag(args, '--branch') ?? 'main';
+    if (!githubRepo || !t3ProjectId || !projectCwd || !instanceId || !modelId) usage();
+    const absCwd = path.resolve(projectCwd);
+    if (!fs.existsSync(absCwd)) {
+      console.error(`cwd does not exist: ${absCwd}`);
+      process.exit(1);
+    }
+    const defaults = writeDefaults({
+      version: 1,
+      environmentId,
+      t3ProjectId,
+      githubRepo,
+      projectCwd: absCwd,
+      baseBranch,
+      instanceId,
+      modelId,
+    });
+    console.log(JSON.stringify({ ok: true, path: defaultsPath(), defaults }, null, 2));
     return;
   }
   if (cmd === 'version' || cmd === '--version' || cmd === '-v') {

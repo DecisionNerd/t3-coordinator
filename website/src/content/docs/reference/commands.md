@@ -12,8 +12,10 @@ description: t3-coordinator CLI and day-to-day commands.
 | `t3-coordinator auth-issue` | Write `~/.t3-coordinator/credentials.json` |
 | `t3-coordinator bind-supervisor --environment <id> --thread <id>` | Durable supervisor binding |
 | `t3-coordinator get-binding --environment <id>` | Show binding |
+| `t3-coordinator defaults` / `defaults-set` | Show / set `~/.t3-coordinator/defaults.json` for DX phrases |
 | `t3-coordinator doctor` | Auth, binding, snapshot, profile paths |
 | `t3-coordinator version` | Print package version |
+| `t3-coordinator run "<phrase>"` | Same router as MCP `run` (`192`, `complete M2`, …) |
 
 ## Install env overrides
 
