@@ -1,8 +1,3 @@
-<!-- LLM: This folder carries the product and experience contract through the complete
-engineering lifecycle. Read ../REQUIREMENTS.md first. Fill the canonical lifecycle docs,
-then create focused setup guides, runbooks, API references, or operational docs only when
-the project needs them. Keep the index current and remove LLM comments as you go. -->
-
 # Engineering
 
 Engineering begins with the shared requirements contract and follows it through design,
@@ -13,20 +8,21 @@ pre-release evidence, continuous delivery, and production learning.
 | Document | Responsibility |
 |---|---|
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | How domain boundaries and system components satisfy the requirements. |
-| [`TESTING.md`](TESTING.md) | How tests and CI prove the system before release. |
+| [`CONTRACTS.md`](CONTRACTS.md) | MCP schemas, state machine, mailbox, reconciliation, authz. |
+| [`TESTING.md`](TESTING.md) | v0 gate and how we prove it. |
 | [`PUBLISHING.md`](PUBLISHING.md) | How verified artifacts are versioned, promoted, deployed, and rolled back. |
-| [`OBSERVABILITY.md`](OBSERVABILITY.md) | How production health and user outcomes are measured and fed back into discovery. |
+| [`OBSERVABILITY.md`](OBSERVABILITY.md) | Follow-up and duplicate-worker signals. |
 | [`adrs/`](adrs/) | Why significant product and technical decisions were made. |
 
 ## Supporting documentation
 
-<!-- LLM: Create only the focused documents this project needs. Common examples include
-development setup, API/interface references, data contracts, security guides, migration
-plans, and operational runbooks. Do not duplicate the canonical lifecycle docs above. -->
-
 | Document | Description |
 |---|---|
-| _filename.md_ | _What it covers and who uses it_ |
+| [`CONTRACTS.md`](CONTRACTS.md) | Normative v0 implementer contract |
+| [`T3-INTEGRATION.md`](T3-INTEGRATION.md) | pingdotgg/t3code HTTP/RPC evidence |
+| [`v0-gate-fix-plan.md`](v0-gate-fix-plan.md) | Closes critique findings; delivery + binding decisions |
+| [`adrs/0001-temporal-centered-coordinator.md`](adrs/0001-temporal-centered-coordinator.md) | Stock T3 + Temporal + MCP (Proposed) |
+| [`adrs/0002-vanilla-postgres-temporal.md`](adrs/0002-vanilla-postgres-temporal.md) | PostgreSQL persistence (Proposed, production) |
 
 ## Decision records
 
@@ -36,5 +32,4 @@ Create the next Architecture Decision Record with:
 docslime add adr <short-slug>
 ```
 
-Keep the decision log in [`adrs/README.md`](adrs/README.md) synchronized with accepted,
-superseded, and deprecated records.
+Keep the decision log in [`adrs/README.md`](adrs/README.md) synchronized.

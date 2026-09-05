@@ -1,86 +1,79 @@
-<!-- LLM: This document captures the product's design context: brand, content, interaction,
-accessibility, and component conventions that make the experience coherent. It is also
-discoverable by tools that look for DESIGN.md. Read PRODUCT.md and relevant evidence in
-experience/ first.
-Interview the user about any existing brand, UI kit, design system, Storybook, tokens,
-screenshots, Figma files, terminal conventions, docs standards, or accessibility bar. Keep
-implementation mechanics in engineering/ unless they are necessary to explain a design
-rule. Remove LLM comments as you go. -->
-
 # Design
 
-<!-- LLM: One short paragraph. Describe the role this design context plays for the project.
-For services or CLIs, cover terminal/docs/API experience. For user-facing products, cover
-visual and interaction experience too. -->
+This project is a coordination service, not a visual product. Consistency lives in **MCP tool naming**, **review vocabulary**, **docs/prompt handoffs**, and **operator-facing status language**—so the supervisor, humans, and workers share one contract.
 
-_What should stay consistent across the product experience?_
+Normative tool and state contracts: [`engineering/CONTRACTS.md`](engineering/CONTRACTS.md).
 
 ## Design Principles
 
-<!-- LLM: Capture 3-6 principles that guide product decisions and UX trade-offs. These should
-connect to evidence and hypotheses in experience/. -->
-
-- **_Principle name_** - _what it means in practice._
+- **Judgment vs mechanics** — A frontier-model supervisor decides; the coordinator remembers, waits, and recovers. Never blur those roles in tools or copy.
+- **Supervisor is a role** — Fable, Astra, and later frontier models are interchangeable. Copy says “supervisor” or “frontier model,” not a single product name, unless giving an example.
+- **Stock T3 is the face** — Desktop/phone experience stays T3; coordinator surfaces are tools and durable status, not a competing UI.
+- **Evidence over narrative** — Deliveries and reviews speak in SHAs, tests, and verdicts—not “looks good” summaries alone.
+- **Fail closed and stay stopped** — Cancel/pause must be obvious and durable; recovery must not resurrect stopped work.
+- **Small tool surface** — Prefer a few domain tools over exposing raw T3 orchestration commands.
+- **Slice before policy** — Do not design GraphForge-specific gravity into v0 UX.
 
 ## Design tool context
 
-<!-- LLM: Explain how design-aware agents or tools should use this file. If the project uses
-impeccable, Figma, Storybook, screenshots, or another source of visual truth, link it here.
-Keep this section about context and workflow, not implementation detail. -->
-
-_How should design critique or UI iteration use PRODUCT.md and DESIGN.md?_
+Use [`PRODUCT.md`](PRODUCT.md) for intent and [`engineering/ARCHITECTURE.md`](engineering/ARCHITECTURE.md) for structure. Critique MCP tools and handoff prompts against the principles above. There is no Figma/Storybook source of truth.
 
 ## Brand And Voice
 
-<!-- LLM: Document naming, tone, writing style, terminology, and visible personality. Include
-words to use/avoid when that matters. -->
-
-- **Tone:** _how the product should sound._
-- **Terminology:** _preferred words and names._
-- **Writing rules:** _short rules for labels, empty states, errors, docs, or prompts._
+- **Tone:** Precise, operational, non-theatrical. Prefer “assignment,” “delivery,” “revise,” “paused” over agent-marketing language.
+- **Terminology:**
+  - **Coordinator** — this service (durable mechanics).
+  - **Supervisor** — frontier-model session (Fable, Astra, etc.).
+  - **Frontier model** — the class of supervisor models; not a vendor lock.
+  - **Worker** — Composer, GLM, or similar implementation session.
+  - **ACCEPT / REVISE / BLOCKED** — only review vocabulary for `submit_review`.
+  - **ACCEPT ≠ merge** — say “accepted for integration” when needed.
+  - **Mailbox** — queued supervisor follow-up; not an open MCP wait.
+- **Writing rules:** Tool descriptions state side effects and idempotency expectations. Status messages name assignment ID, commit SHA, and blocker in one line when possible. Examples may say “e.g. Fable” — requirements must not.
 
 ## Visual And Content Style
 
-<!-- LLM: Capture visual/content rules that apply to the product. If the project has no
-visual UI, state what is not applicable and document terminal, API, docs, or generated
-artifact style instead. Use Mermaid fenced blocks for flowcharts rather than ASCII art.
-Link to tokens, CSS, Figma, brand assets, or Storybook when available. -->
+Visual UI is **not applicable** (T3 owns the client UI). For docs and generated artifacts:
 
-- **Color:** _palette, semantic usage, contrast expectations._
-- **Typography:** _font choices, scale, hierarchy._
-- **Spacing & layout:** _grid, density, alignment, rhythm._
-- **Iconography & imagery:** _style, sourcing, usage rules._
-- **Content structure:** _headings, tables, examples, screenshots, diagrams, or docs rules._
+- Prefer Mermaid for architecture and sequence flows.
+- Tables for tool contracts and state authorities.
+- No decorative dashboards in docs; keep operator runbooks procedural.
 
 ## Interaction Patterns
 
-<!-- LLM: Document common interaction rules: navigation, forms, loading, empty/error/success
-states, keyboard behavior, CLI output, API ergonomics, motion, and progressive disclosure. -->
+Operator journeys (design → plan → worker → review; milestone campaigns; single-issue loops): [`experience/DX-PATHS.md`](experience/DX-PATHS.md). Setup: [`experience/QUICKSTART.md`](experience/QUICKSTART.md). SDLC pairings (DocSlime / RedTeam / Impeccable + `dev-skills` testbed): [`experience/TESTBED.md`](experience/TESTBED.md).
 
-- **Navigation:** _how users move through the product._
-- **Controls:** _buttons, inputs, menus, toggles, commands, or API calls._
-- **States:** _loading, empty, error, success, disabled._
-- **Motion:** _animation principles or "none" if motion is not part of the experience._
+- **MCP:** Assignment returns a durable ID immediately; long builds are Temporal workflows, not open MCP RPCs.
+- **Spec first:** No assign without a committed spec SHA.
+- **Mailbox:** Delivery enqueues one follow-up; send `thread.turn.start` only when T3 shows that thread idle. T3 will **queue** a message if we send during a live turn — that is a bug in us, not a T3 refuse.
+- **Review loop:** REVISE continues the same worker; BLOCKED pauses for human/supervisor resolution; ACCEPT advances to authorized integration checks only (v1).
+- **Pause vs cancel:** Pause lets in-flight finish; cancel stops or quarantines and stays dead across restart.
+- **Errors:** Prefer actionable blockers (auth, duplicate suppressed, capacity deferred, missing spec SHA) over opaque failures.
+- **Motion:** None.
 
 ## Components And Patterns
 
-<!-- LLM: List reusable components, UI patterns, command patterns, API patterns, or docs
-patterns. Link to code, Storybook, design files, or implementation docs where they exist. -->
-
 | Component / pattern | Use it for | Notes / source |
 |---|---|---|
-| _Name_ | _When to use it_ | _Link or rule_ |
+| `assign_work` | Start scoped worker assignment | Spec SHA + supervisor thread required |
+| `get_work_status` / `get_delivery` | Progress and evidence | SHA-bound |
+| `submit_review` | ACCEPT / REVISE / BLOCKED | Supervisor only; deliverySha must match |
+| `pause_work` / `cancel_work` | Stop further dispatch | Distinct semantics; survive restart |
+| Isolated worktree | Parallel workers | Via T3; not shared checkout |
+| Follow-up mailbox | Unattended review wake | CONTRACTS.md |
+| Vertical-slice gate | Before parallelism/policy | TESTING.md |
 
 ## Accessibility
 
-<!-- LLM: Capture the accessibility bar. Include keyboard behavior, focus, contrast, reduced
-motion, semantic HTML, screen-reader expectations, CLI equivalents, or docs accessibility. -->
-
-- _Accessibility rule or target._
+- Tool and status text must be readable in T3 and terminal logs without relying on color alone.
+- Prefer stable IDs in messages so phone/desktop operators can correlate the same assignment.
 
 ## References
 
-<!-- LLM: Link the source of truth for design assets and implementation surfaces. Delete this
-section if there are no references yet. -->
-
-- _Figma / Storybook / token file / component directory / brand asset._
+- [`PRODUCT.md`](PRODUCT.md)
+- [`REQUIREMENTS.md`](REQUIREMENTS.md)
+- [`engineering/CONTRACTS.md`](engineering/CONTRACTS.md)
+- [`engineering/ARCHITECTURE.md`](engineering/ARCHITECTURE.md)
+- [`engineering/T3-INTEGRATION.md`](engineering/T3-INTEGRATION.md)
+- Source conversation: [Codex share](https://chatgpt.com/s/cx_6a9c1a34fedc8191ab31c610eaaabed4)
+- Red team: [`.redteam/reviews/coordinator-docs-review.md`](../.redteam/reviews/coordinator-docs-review.md)

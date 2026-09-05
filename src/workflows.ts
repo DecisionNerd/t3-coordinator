@@ -1,12 +1,14 @@
-import { proxyActivities } from '@temporalio/workflow';
-// Only import the activity types
-import type * as activities from './activities';
-
-const { greet } = proxyActivities<typeof activities>({
-  startToCloseTimeout: '1 minute',
-});
-
-/** A workflow that simply calls an activity */
-export async function example(name: string): Promise<string> {
-  return await greet(name);
-}
+export {
+  assignmentWorkflow,
+  pauseSignal,
+  resumeSignal,
+  cancelSignal,
+  reviewSignal,
+  statusQuery,
+} from './workflows/assignment';
+export type {
+  AssignmentWorkflowInput,
+  AssignmentWorkflowResult,
+  AssignmentStatusView,
+} from './workflows/assignment';
+export { example } from './workflows/example';

@@ -1,82 +1,62 @@
-<!-- LLM: This document explains how we prove the system fulfills its product goals, experiences,
-and requirements. It closes the BDD loop: evidence in ../experience/ and requirements in
-../REQUIREMENTS.md should map to something verified here. Interview the
-user about how they actually test (or intend to). Remove LLM comments as you complete each
-section. -->
-
 # Testing
 
-<!-- LLM: One-paragraph summary of the testing philosophy. Ask: "How do you decide something
-is correct and shippable?" Capture the spirit (e.g. "behavior-first, fast feedback"). -->
-
-_How do we know the system works?_
+v0 is proven by three behaviors: isolated dispatch, mailbox follow-up, and durable cancel. Those are the ship gate. Policy (FR-7–9) has no tests until the gate is green on live T3.
 
 ## Strategy
 
-<!-- LLM: Describe the layers of testing and what each is responsible for. Ask the user which
-layers they use and where the emphasis is. Adjust the rows to reality — don't list layers
-they don't have. -->
-
 | Layer | What it verifies | Tools |
 |---|---|---|
-| Unit | _Smallest units of logic_ | _…_ |
-| Integration | _Components working together_ | _…_ |
-| End-to-end / behavior | _User-visible behavior derived from ../experience/_ | _…_ |
+| Unit | Delivery trailer, binding resolve, busy matrix, commandId receipts, assignment id | `src/mocha/domain.test.ts` |
+| Integration | AssignmentWorkflow: grace→`no_delivery`, busy mailbox deferral, pause/resume mailbox | `src/mocha/assignment.test.ts` + Temporal test env |
+| End-to-end / behavior | v0 gate rows on OVHC (or local) T3 against the paired **dev-skills** repo | Manual protocol; see [`../experience/TESTBED.md`](../experience/TESTBED.md) |
 
-## Behavior coverage
-
-<!-- LLM: This is the BDD heart of the doc. Map each key experience / requirement to the
-test(s) that prove it. Reuse the Given/When/Then scenarios from ../experience/ and the
-requirement IDs from ../REQUIREMENTS.md. Ask the user to confirm each important behavior has a
-test (or flag it as a gap). -->
+## Behavior coverage (v0 gate)
 
 | Experience / Requirement | Scenario (Given/When/Then) | Test |
 |---|---|---|
-| _Experience name / FR-1_ | _Given … When … Then …_ | _path/to/test_ |
+| FR-2 + FR-5 | Given a supervisor assigned one GLM task and the coordinator was killed after dispatch, when the coordinator restarts and reconciles, then the same worker is adopted and no second launch occurs | `tests/gate/recover-same-worker` (planned); until then, recorded spike checklist |
+| FR-3 + FR-4 | Given a worker committed a delivery SHA with tests and the supervisor thread is idle, when the coordinator records the delivery, then exactly one mailbox follow-up is sent to `supervisorThreadId` with SHAs | `tests/gate/one-follow-up` (planned) |
+| FR-6 | Given an assignment was cancelled, when the coordinator restarts and completion events arrive, then no new dispatch occurs and state remains `cancelled` | `tests/gate/cancel-stays-dead` (planned) |
+| FR-1 + FR-11 | Given Fable or Astra (or another frontier model) as supervisor, when `assign_work` is called with `supervisorThreadId` and `specSha`, then the same contract applies | Contract test on MCP schema; no model-name branch |
+| FR-4 degrade | Given T3 cannot signal thread idle, when a delivery is recorded, then the mailbox item stays queued/visible and no auto-turn is injected | Spike observation; tripwire if auto-inject is the only option |
 
 ## Traceability contract
 
-<!-- LLM: Explain the quality trace this project uses. Keep it concrete: product goal ->
-experience -> requirement -> BDD scenario -> test, with architecture/ADR links where a
-domain boundary or durable decision matters. Remove or shorten if the project is tiny, but
-do not leave behavior untraceable. -->
-
 | Link | Evidence |
 |---|---|
-| Product goal -> experience | _../PRODUCT.md / ../experience/ evidence_ |
-| Experience -> requirement | _Requirement IDs from ../REQUIREMENTS.md_ |
-| Requirement -> BDD scenario | _Given/When/Then scenario_ |
-| Scenario -> test | _Test file, manual check, eval, or known gap_ |
-| Requirement -> architecture/ADR | _Architecture section or ADR link when applicable_ |
+| Product goal -> experience | [`../PRODUCT.md`](../PRODUCT.md) v0 success metrics |
+| Experience -> requirement | FR-1–6, FR-10–11, NFR-1–4, NFR-7 |
+| Requirement -> BDD scenario | Behavior coverage table |
+| Scenario -> test | Planned paths above; gap until adapter exists |
+| Requirement -> architecture/ADR | [`ARCHITECTURE.md`](ARCHITECTURE.md), [`CONTRACTS.md`](CONTRACTS.md), ADR-0001 Proposed |
 
 ## Evaluation against product goals
 
-<!-- LLM: Beyond pass/fail tests, how do we evaluate that the system fulfills the product goals and
-success metrics (from ../PRODUCT.md)? This may include metrics, manual evaluation, user
-feedback, or LLM/qualitative evals. Ask the user how they judge product-level success, not
-just code correctness. -->
-
-- _Metric / eval — how it's measured and what "good" looks like_
+- Follow-ups per delivery = 1 (0 or >1 fails the gate).
+- Duplicate worker launches in the kill/recover test = 0.
+- Cancelled assignments do not resume after restart.
+- Supervisor examples (Fable vs Astra) do not change tool behavior.
 
 ## Running the tests
 
-<!-- LLM: Give the exact commands to run the suite locally and the expectation (e.g. all green,
-coverage threshold). Ask the user for the real commands. -->
+```
+npm test
+npm start          # Temporal (auto if needed) + worker; MCP is host-spawned
+npm run cli -- bind-supervisor --environment <id> --thread <threadId>
 
+# v0 gate on live T3 (dev-skills repo checkout): follow CONTRACTS.md + this table.
+# Craft skills pack is not required on OVHC — only the git project.
 ```
-_command to run the tests_
-```
+
+Hello-world `example` workflow remains as a Temporal smoke check only.
 
 ## Continuous integration
 
-<!-- LLM: Describe when tests run automatically and what gates merges/releases. Reference the
-CI config file. Remove if there is no CI yet, but suggest adding it. -->
-
-_What runs in CI, and what must pass before merge/release?_
+CI should run unit/state-machine tests when they exist. The live T3 gate is a manual check on a **dev-skills** checkout (local or OVHC) until automated. Do not merge v1 policy features before the gate rows are green.
 
 ## Test data & environments
 
-<!-- LLM: How test data and environments are managed (fixtures, seeds, sandboxes, throwaway
-dirs). Remove if not applicable. -->
-
-_How are test data and environments set up and torn down?_
+- Paired repo: **[DecisionNerd/dev-skills](https://github.com/DecisionNerd/dev-skills)** as a T3 project — not GraphForge/XYG ([experience/TESTBED.md](../experience/TESTBED.md)).
+- OVHC needs that **clone** added to T3; it does **not** need the craft skills pack installed.
+- One isolated worktree, one supervisor thread, one worker.
+- No GitHub writes in v0 tests.

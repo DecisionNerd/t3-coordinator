@@ -7,7 +7,8 @@ import assert from 'assert';
 describe('Example workflow with mocks', () => {
   let testEnv: TestWorkflowEnvironment;
 
-  before(async () => {
+  before(async function () {
+    this.timeout(120_000);
     testEnv = await TestWorkflowEnvironment.createLocal();
   });
 

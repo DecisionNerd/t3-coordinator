@@ -1,75 +1,88 @@
-<!-- LLM: This document defines continuous delivery: how a change that passes TESTING.md
-becomes a versioned artifact and safely reaches users. Cover software, packages, APIs,
-infrastructure, and documentation that this project actually publishes. Link to official
-platform documentation rather than copying volatile provider instructions. Interview the
-user about the real release path, promotion gates, rollback, and ownership. Remove LLM
-comments as you complete each section. -->
-
 # Publishing
 
-_How does a verified change become an artifact and reach users safely?_
+How a verified change becomes an installable artifact for operators (including OVHC).
 
 ## Artifacts and destinations
 
-<!-- LLM: List what the project publishes and where it goes: application, service,
-container, package, binary, schema, infrastructure, docs, or another artifact. Remove rows
-that do not apply. -->
-
 | Artifact | Destination | Versioned by | Owner |
 |---|---|---|---|
-| _Artifact_ | _Registry, environment, store, or host_ | _Tag, digest, release, or commit_ | _Role/team_ |
+| Source archive | GitHub `main` (and later git tags) | Commit SHA / tag | Maintainers |
+| Installer script | [`scripts/install.sh`](../../scripts/install.sh) via raw GitHub URL | Same as branch/tag | Maintainers |
+| Local app tree | `~/.t3-coordinator/app` on the host | `install.json` records repo/ref/time | Operator |
 
-## Suggested versioning and change history
+There is no npm registry publish yet (`private: true`). Installers download `https://github.com/DecisionNerd/t3-coordinator/archive/refs/heads/<ref>.tar.gz` (or `refs/tags/<ref>.tar.gz` when `T3_COORDINATOR_REF` looks like a version tag).
 
-<!-- LLM: Treat these as optional recommendations, not requirements. First document the
-team's existing versioning, commit, and changelog practices. Suggest Semantic Versioning or
-Conventional Commits only when they would make compatibility and release intent clearer. Do
-not add enforcement, rewrite history, or change release automation without explicit team
-agreement. -->
+## Install command (users)
 
-- Consider **Semantic Versioning** (`MAJOR.MINOR.PATCH`) when an artifact has a public API or
-  compatibility contract: incompatible changes may justify `MAJOR`, backward-compatible
-  features `MINOR`, and backward-compatible fixes `PATCH`.
-- Consider **Conventional Commits** (`type(scope): description`) when human- and
-  machine-readable change history would improve reviews, changelogs, or release automation.
-- Keep the workflow the team already uses when it serves them better. Document the chosen
-  convention and any exceptions; these suggestions do not require enforcement.
+```bash
+curl -fsSL https://raw.githubusercontent.com/DecisionNerd/t3-coordinator/main/scripts/install.sh | sh
+```
+
+Optional env: `T3_COORDINATOR_REF`, `T3_COORDINATOR_INSTALL_DIR`, `T3_COORDINATOR_BIN_DIR`, `T3_COORDINATOR_REPO`.
+
+Requires Node 20+, `curl`, `tar`, `npm`. Temporal CLI is separate ([docs](https://docs.temporal.io/cli#install)).
+
+## Suggested versioning
+
+- Prefer **Semantic Versioning** tags (`v0.1.0`) once the [v0 gate](TESTING.md) is green and we cut releases.
+- Until then, `main` is the default install ref.
+- Conventional Commits are welcome; not enforced.
 
 ## Build and continuous delivery
 
-<!-- LLM: Add the exact commands and automation that build, sign, package, and publish.
-Explain which TESTING.md gates must pass before an artifact can move forward. -->
+Installer path on the target host:
 
 ```sh
-_build / publish command_
+# (what install.sh runs)
+npm install
+npm run build
+npm prune --omit=dev
+# wrapper: ~/.local/bin/t3-coordinator → node ~/.t3-coordinator/app/lib/cli.js
 ```
+
+From a checkout (developers):
+
+```sh
+npm install
+npm test
+npm run build
+```
+
+Promotion gate: [TESTING.md](TESTING.md) must be green before tagging a release people should pin with `T3_COORDINATOR_REF=vX.Y.Z`.
 
 ## Environments and promotion
 
-<!-- LLM: Describe the actual path to users (for example preview -> staging -> production),
-who or what approves each transition, and whether releases are gradual. Do not invent an
-environment that does not exist. -->
-
 | From | To | Required evidence / approval |
 |---|---|---|
-| _Environment_ | _Environment_ | _CI gate, human approval, change window, or policy_ |
+| Local / PR | `main` | Review + tests |
+| `main` | Tagged release (`v*`) | Full v0 gate on paired [TESTBED](../experience/TESTBED.md) |
+| Tag / `main` | Operator hosts (OVHC) | Re-run `install.sh` (overwrites `~/.t3-coordinator/app`) |
 
 ## Deployment verification
 
-<!-- LLM: Name the smoke tests, health checks, and OBSERVABILITY.md signals that confirm a
-release is healthy. Separate "deployed" from "verified." -->
+On the host after install:
 
-- _Verification and expected result._
+```bash
+t3-coordinator version
+t3-coordinator doctor
+```
+
+Expected: version prints; doctor shows credentials/binding/snapshot status (snapshot may fail until T3 + `auth-issue`).
 
 ## Rollback and recovery
 
-<!-- LLM: State the exact rollback trigger, authority, mechanism, and data-migration caveats.
-Link to a runbook when recovery is more involved than one command. -->
+Re-run the installer with a known-good ref:
 
-_How is a harmful release stopped or reversed safely?_
+```bash
+T3_COORDINATOR_REF=<previous-sha-or-tag> curl -fsSL \
+  https://raw.githubusercontent.com/DecisionNerd/t3-coordinator/main/scripts/install.sh | sh
+```
+
+Bindings and credentials live under `~/.t3-coordinator/` outside the app tree and survive reinstalls. Delete `~/.t3-coordinator/app` only if you intend a clean app install; do not wipe credentials unless rotating auth.
 
 ## Official references
 
 - [Semantic Versioning 2.0.0](https://semver.org/)
 - [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/)
-- _CI/CD, registry, hosting, package, or documentation publishing reference._
+- [Temporal CLI install](https://docs.temporal.io/cli#install)
+- [GitHub archive downloads](https://docs.github.com/en/repositories/working-with-files/using-files/downloading-source-code-archives)
