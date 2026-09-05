@@ -1,38 +1,37 @@
 # Experience
 
-Operator and agent experience for **t3-coordinator**: GitHub intent + durable T3 handoffs on the paired **[dev-skills](https://github.com/DecisionNerd/dev-skills) repository**, shaped by our **DocSlime / RedTeam / Impeccable** SDLC craft ([TESTBED.md](TESTBED.md)).
+How to run **t3-coordinator** day to day: install, bind a supervisor, assign work, and review deliveries — without carrying messages between agents.
 
-## Discovery practice
+**Published site:** [decisionnerd.github.io/t3-coordinator](https://decisionnerd.github.io/t3-coordinator/) (`website/` · `npm run docs:dev`)
 
-Learn from live spikes on that repo, supervisor review quality, and whether humans still paste handoffs. Promote repeated friction into [REQUIREMENTS.md](../REQUIREMENTS.md).
+## Start here
 
-**Do not confuse** the `dev-skills` **git testbed** or the **operator craft stack** with installing agent skills on OVHC — see [TESTBED.md](TESTBED.md).
+| Doc | Use it when |
+|---|---|
+| [QUICKSTART.md](QUICKSTART.md) | First install and first assignment |
+| [TESTBED.md](TESTBED.md) | Choosing which repo opens in T3 |
+| [DX-PATHS.md](DX-PATHS.md) | Design, milestone, or single-issue loops |
+| [OPERATING-PROFILE.md](OPERATING-PROFILE.md) | Changing helpers / prompts without reinstalling |
 
-## Experience principles
+## What good feels like
 
-- **Paired repo first** — v0 proof runs on `dev-skills`, not GraphForge/XYG.
-- **Paired SDLC craft** — DocSlime (docs), RedTeam (challenge), Impeccable (design), then issues/milestones delivery — on the operator machine.
-- **GitHub owns intent** — issues and milestones stay the backlog; coordinator owns waits and recovery.
-- **Evidence over chat** — delivery and review bind to SHAs and trailers, not agent summaries.
-- **Supervisor judges; workers build** — MCP tools on the supervisor provider only.
-- **Small batches** — one issue → one assignment → review before opening the next front (v0).
+- You (or the supervisor) commit a spec, call `assign_work`, and walk away.  
+- A worker delivers a real commit with a `Coordinated-By` trailer.  
+- The supervisor wakes once, reviews, and ACCEPTs / REVISEs / BLOCKs.  
+- Kill the coordinator mid-flight and it recovers the same worker — no duplicate launches.  
+- Issues and milestones stay on GitHub; the coordinator never becomes a second backlog.
 
-## Index
+## Habits that keep the DX clean
 
-| Document | Kind | Status | What it informs |
-|---|---|---|---|
-| [TESTBED.md](TESTBED.md) | Pairing | Active | `dev-skills` repo + DocSlime / RedTeam / Impeccable SDLC |
-| [QUICKSTART.md](QUICKSTART.md) | Runbook | Active | First successful session |
-| [DX-PATHS.md](DX-PATHS.md) | Journey | Active | Design / milestone / single-issue loops |
-
-## Traceability
+- Spec before assign (`specSha`).  
+- MCP on the supervisor provider only.  
+- One implementation front at a time in v0.  
+- ACCEPT ≠ merge — you still land the PR.  
+- Prefer editing profile/prompts when the *process* changes; leave the installed coordinator alone.
 
 ```mermaid
 flowchart LR
-  Craft["DocSlime / RedTeam / Impeccable"] --> Spec["specSha / issues"]
-  Spec --> Spike["Spike on dev-skills"]
-  Spike --> Opportunity["DX path friction"]
-  Opportunity --> Requirement["REQUIREMENTS.md"]
-  Requirement --> Contracts["CONTRACTS.md"]
-  Contracts --> Test["TESTING.md gate"]
+  Setup["Quick start"] --> Paths["DX paths"]
+  Paths --> Profile["Customize profile"]
+  Profile --> Setup
 ```

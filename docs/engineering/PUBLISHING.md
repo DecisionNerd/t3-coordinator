@@ -9,6 +9,7 @@ How a verified change becomes an installable artifact for operators (including O
 | Source archive | GitHub `main` (and later git tags) | Commit SHA / tag | Maintainers |
 | Installer script | [`scripts/install.sh`](../../scripts/install.sh) via raw GitHub URL | Same as branch/tag | Maintainers |
 | Local app tree | `~/.t3-coordinator/app` on the host | `install.json` records repo/ref/time | Operator |
+| Docs site | GitHub Pages (`decisionnerd.github.io/t3-coordinator`) | Commit to `main` (paths under `website/`) | Maintainers |
 
 There is no npm registry publish yet (`private: true`). Installers download `https://github.com/DecisionNerd/t3-coordinator/archive/refs/heads/<ref>.tar.gz` (or `refs/tags/<ref>.tar.gz` when `T3_COORDINATOR_REF` looks like a version tag).
 

@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { bindSupervisor, bindingsPath, getSupervisorBinding } from './domain/bindings';
 import { credentialsPath, readT3Credentials, writeT3Credentials } from './t3/credentials';
 import { createConfiguredT3Adapter } from './t3/httpAdapter';
@@ -21,6 +23,19 @@ function readFlag(args: string[], name: string): string | undefined {
   const idx = args.indexOf(name);
   if (idx === -1) return undefined;
   return args[idx + 1];
+}
+
+function operatingProfilePaths(): {
+  active: string | null;
+  defaultTemplate: string | null;
+} {
+  const home = process.env.HOME ?? '';
+  const active = path.join(home, '.t3-coordinator', 'operating-profile.json');
+  const defaultTemplate = path.resolve(__dirname, '..', 'templates', 'operating-profile.default.json');
+  return {
+    active: fs.existsSync(active) ? active : null,
+    defaultTemplate: fs.existsSync(defaultTemplate) ? defaultTemplate : null,
+  };
 }
 
 async function main(): Promise<void> {
@@ -143,6 +158,7 @@ async function main(): Promise<void> {
             : null,
           snapshotOk,
           bindingEnvLocal: getSupervisorBinding('env-local') ?? null,
+          operatingProfile: operatingProfilePaths(),
         },
         null,
         2,

@@ -43,7 +43,8 @@ flowchart TB
 | Temporal activities | Side-effecting steps: T3 calls, spec-SHA checks | T3 adapter; git |
 | T3 adapter | Version-sensitive create/start/observe/interrupt via `POST /api/orchestration/dispatch` and thread snapshot/subscribe; client-supplied `commandId`/`threadId`; reconcile via T3 receipts | Stock T3; [`T3-INTEGRATION.md`](T3-INTEGRATION.md) |
 | Follow-up mailbox | Exactly one pending supervisor message per delivery SHA | Adapter + Temporal |
-| Coordinator service process | Operator entrypoint (`npm start`): ensure Temporal + run worker. MCP is a separate host-spawned stdio process (`npm run mcp`), not a second daemon you start by hand. | Temporal; local FS bindings |
+| Coordinator service process | Operator entrypoint (`t3-coordinator start` / `npm start`): Temporal + worker. MCP is host-spawned stdio. | Temporal; local FS bindings |
+| Operating profile (optional files) | Operator notes for preferred craft helpers / testbed; not loaded by Temporal | `~/.t3-coordinator/operating-profile.json` — [OPERATING-PROFILE](../experience/OPERATING-PROFILE.md) |
 | Stock T3 | Conversations, providers, worktrees, desktop/phone UX | Provider CLIs; Connect |
 | Policy module (v1) | PR inspection, CI routing, capacity | GitHub; host controllers |
 

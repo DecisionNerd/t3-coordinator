@@ -51,6 +51,7 @@ Give a frontier-model supervisor an engineering objective and have work progress
 - Putting a second AI “manager” above the supervisor (CrewAI hierarchical manager, etc.).
 - Using Turso/SQLite as Temporal’s persistence backend.
 - Auto-merging on supervisor `ACCEPT` (acceptance ≠ merge authorization).
+- Requiring a particular craft-skill pack to run the coordinator — process helpers are optional and file-editable ([experience/OPERATING-PROFILE.md](experience/OPERATING-PROFILE.md)).
 
 ## Success Metrics
 
@@ -67,5 +68,5 @@ Give a frontier-model supervisor an engineering objective and have work progress
 
 ## Stakeholders
 
-- **Owner / operator** — David Spencer; remote OVHC-AGENCY development host and T3 environment. v0 testbed is the **dev-skills git repo** as a T3 project. Operator SDLC craft (**DocSlime**, **RedTeam**, **Impeccable**, issues/milestones) runs on the operator machine — **not** assumed installed on OVHC ([experience/TESTBED.md](experience/TESTBED.md)).
+- **Owner / operator** — David Spencer; remote OVHC-AGENCY development host and T3 environment. First projects usually use a [dev-skills](https://github.com/DecisionNerd/dev-skills) checkout in T3; operators personalize craft helpers via [experience/OPERATING-PROFILE.md](experience/OPERATING-PROFILE.md) ([experience/TESTBED.md](experience/TESTBED.md)).
 - **Dependent systems** — GraphForge and XYG engineering delivery; existing CI, readiness, and benchmark controllers.

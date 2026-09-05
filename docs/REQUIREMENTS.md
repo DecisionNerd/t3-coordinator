@@ -41,6 +41,7 @@ Deferred until the v0 gate in [`TESTING.md`](engineering/TESTING.md) passes.
 | NFR-5 | Operability | Runs as ubuntu on OVHC-AGENCY; phone access remains via T3 Connect. | v0 | Matches existing remote setup. |
 | NFR-6 | Maintainability | Version-sensitive T3 behavior isolated in one adapter module. | v0 | T3 is not a public extension SDK. |
 | NFR-7 | Model portability | Supervisor tools and mailbox do not depend on a single frontier-model product name. | v0 | Fable, Astra, and successors are interchangeable in the role. |
+| NFR-8 | Operability of process | Operators can change SDLC helpers and prompts via files without reinstalling the coordinator. | v0 | [experience/OPERATING-PROFILE.md](experience/OPERATING-PROFILE.md) |
 
 ## Behavior trace (v0 gate)
 

@@ -1,0 +1,36 @@
+---
+title: t3-coordinator
+description: Durable assign → deliver → review around stock T3 Code.
+template: splash
+hero:
+  tagline: Frontier-model supervisor assigns work. Temporal waits and recovers. T3 stays the UI.
+  actions:
+    - text: Quick start
+      link: /t3-coordinator/guides/quick-start/
+      icon: right-arrow
+    - text: GitHub
+      link: https://github.com/DecisionNerd/t3-coordinator
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## What you get
+
+A coordinator beside **stock T3**: bind a supervisor thread, call `assign_work`, get a delivery SHA with a `Coordinated-By` trailer, then `submit_review` — without pasting handoffs between agents.
+
+<CardGrid stagger>
+	<Card title="Install in one curl" icon="rocket">
+		No git clone required on the host. See [Quick start](/t3-coordinator/guides/quick-start/).
+	</Card>
+	<Card title="Walk a journey" icon="seti:pipeline">
+		Design, milestone, or single-issue loops in [DX paths](/t3-coordinator/guides/dx-paths/).
+	</Card>
+	<Card title="Shape your process" icon="setting">
+		Change helpers and prompts via files — [Customize workflow](/t3-coordinator/guides/customize-workflow/).
+	</Card>
+	<Card title="Keep intent on GitHub" icon="github">
+		Issues and milestones stay the backlog. The coordinator owns waits and recovery.
+	</Card>
+</CardGrid>

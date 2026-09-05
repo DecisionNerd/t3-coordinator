@@ -13,6 +13,7 @@ Normative tool and state contracts: [`engineering/CONTRACTS.md`](engineering/CON
 - **Fail closed and stay stopped** — Cancel/pause must be obvious and durable; recovery must not resurrect stopped work.
 - **Small tool surface** — Prefer a few domain tools over exposing raw T3 orchestration commands.
 - **Slice before policy** — Do not design GraphForge-specific gravity into v0 UX.
+- **Workflow is editable** — Operators change process via profile/prompts/repo files ([experience/OPERATING-PROFILE.md](experience/OPERATING-PROFILE.md)); MCP and Temporal stay the durable handoff layer.
 
 ## Design tool context
 
@@ -41,7 +42,7 @@ Visual UI is **not applicable** (T3 owns the client UI). For docs and generated 
 
 ## Interaction Patterns
 
-Operator journeys (design → plan → worker → review; milestone campaigns; single-issue loops): [`experience/DX-PATHS.md`](experience/DX-PATHS.md). Setup: [`experience/QUICKSTART.md`](experience/QUICKSTART.md). SDLC pairings (DocSlime / RedTeam / Impeccable + `dev-skills` testbed): [`experience/TESTBED.md`](experience/TESTBED.md).
+Operator journeys: [`experience/DX-PATHS.md`](experience/DX-PATHS.md). Setup: [`experience/QUICKSTART.md`](experience/QUICKSTART.md). Project + optional craft helpers: [`experience/TESTBED.md`](experience/TESTBED.md). Personalize the loop: [`experience/OPERATING-PROFILE.md`](experience/OPERATING-PROFILE.md).
 
 - **MCP:** Assignment returns a durable ID immediately; long builds are Temporal workflows, not open MCP RPCs.
 - **Spec first:** No assign without a committed spec SHA.

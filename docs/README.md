@@ -8,7 +8,8 @@ Living docs for **t3-coordinator**: a Temporal-backed coordination service aroun
 |---|---|
 | [`PRODUCT.md`](PRODUCT.md) | What is this product, who is it for, and why does it exist? |
 | [`DESIGN.md`](DESIGN.md) | What should stay consistent in tools, vocabulary, and operator UX? |
-| [`experience/`](experience/) | Testbed + SDLC pairings (`dev-skills` repo; DocSlime / RedTeam / Impeccable), quick start, DX paths. |
+| [`experience/`](experience/) | Quick start, DX paths, where work happens, customize workflow. |
+| [Published docs](https://decisionnerd.github.io/t3-coordinator/) | Starlight site (`website/`) on GitHub Pages. |
 | [`REQUIREMENTS.md`](REQUIREMENTS.md) | v0 gate vs v1 policy — what must the system demonstrably do? |
 | [`engineering/CONTRACTS.md`](engineering/CONTRACTS.md) | MCP, state machine, mailbox, reconciliation. |
 | [`engineering/T3-INTEGRATION.md`](engineering/T3-INTEGRATION.md) | Evidence from pingdotgg/t3code, not guesses. |

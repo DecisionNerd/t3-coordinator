@@ -1,4 +1,7 @@
-# Quick start
+---
+title: Quick start
+description: Install, bind a supervisor, and complete one reviewed assignment.
+---
 
 Get from zero to one reviewed assignment without pasting handoffs.
 
@@ -47,7 +50,7 @@ Add MCP on the **supervisor provider only** (not workers):
 }
 ```
 
-Optional: copy and edit a workflow profile so helpers match how you work — [OPERATING-PROFILE.md](OPERATING-PROFILE.md).
+Optional: copy and edit a workflow profile so helpers match how you work — [Customize your workflow](/t3-coordinator/guides/customize-workflow/).
 
 ## Every session
 
@@ -59,8 +62,8 @@ Leave that running. The host spawns `t3-coordinator mcp` when the supervisor nee
 
 ## First assignment
 
-1. Commit a small plan/spec in the project (`specSha`).  
-2. From the supervisor, call `assign_work` (preferred).  
+1. Commit a small plan/spec in the project (`specSha`).
+2. From the supervisor, call `assign_work` (preferred).
 3. Wait for delivery; supervisor calls `submit_review` with ACCEPT / REVISE / BLOCKED.
 
 Debug from a coordinator checkout (install-only hosts: skip this and use MCP):
@@ -99,4 +102,8 @@ temporal workflow signal -w assignment-<id> --name review \
 | Worker | Isolated worktree + trailer commit |
 | T3 | Threads, providers, UI |
 
-Next: [TESTBED.md](TESTBED.md) · [DX-PATHS.md](DX-PATHS.md) · [OPERATING-PROFILE.md](OPERATING-PROFILE.md) · [Published docs](https://decisionnerd.github.io/t3-coordinator/guides/quick-start/)
+## Next
+
+- [Where work happens](/t3-coordinator/guides/where-work-happens/)
+- [DX paths](/t3-coordinator/guides/dx-paths/)
+- [Customize your workflow](/t3-coordinator/guides/customize-workflow/)
