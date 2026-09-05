@@ -9,8 +9,8 @@
     "t3-coordinator": "./lib/cli.js"
   },
   "scripts": {
-    "build": "tsc --build",
-    "build.watch": "tsc --build --watch",
+    "build": "tsc --build tsconfig.build.json",
+    "build.watch": "tsc --build --watch tsconfig.build.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
