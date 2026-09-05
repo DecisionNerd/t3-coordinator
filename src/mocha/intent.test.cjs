@@ -6,6 +6,14 @@ const { parseIntent } = require('../../lib/domain/intent.js');
 const { parseTaskListChildren } = require('../../lib/domain/epic.js');
 
 describe('parseIntent', () => {
+  it('maps empty and next to orientation', () => {
+    assert.deepStrictEqual(parseIntent(''), { kind: 'next' });
+    assert.deepStrictEqual(parseIntent('   '), { kind: 'next' });
+    assert.deepStrictEqual(parseIntent('next'), { kind: 'next' });
+    assert.deepStrictEqual(parseIntent('what next'), { kind: 'next' });
+    assert.deepStrictEqual(parseIntent('standup'), { kind: 'next' });
+  });
+
   it('maps bare issue numbers to Path C', () => {
     assert.deepStrictEqual(parseIntent('192'), { kind: 'push_issue', issueNumber: 192 });
     assert.deepStrictEqual(parseIntent('#192'), { kind: 'push_issue', issueNumber: 192 });

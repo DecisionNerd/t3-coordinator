@@ -17,6 +17,7 @@ import { resolveAssignWork } from '../activities';
 import { completeEpic, completeMilestone, pushIssue, runDxIntent } from '../domain/dx';
 import { runIssueCommand, runMilestoneCommand } from '../domain/backlog';
 import { epicStatus, EPIC_BODY_TEMPLATE } from '../domain/epic';
+import { orientNext } from '../domain/orient';
 import { readDefaults } from '../domain/defaults';
 import {
   assignmentWorkflow,
@@ -51,17 +52,30 @@ const server = new McpServer({
 
 server.tool(
   'run',
-  'Primary DX entry after @t3-coordinator. Phrases: "192", "complete M2", "complete epic 50", "status 192", "plan milestone M2", "critique epic 50", "create epic …", "close 192". Mutations preview unless you use issue/milestone tools with apply:true.',
-  { phrase: z.string() },
+  'Primary DX entry after @t3-coordinator. Empty phrase / "next" = review goals + backlog and decide what to do next (no auto-assign). Phrases: "192", "complete M2", "complete epic 50", "status 192", "plan milestone M2", "critique epic 50", "create epic …", "close 192". Mutations preview unless issue/milestone tools use apply:true.',
+  { phrase: z.string().optional().default('') },
   async ({ phrase }) => {
     try {
-      const out = await runDxIntent(phrase);
+      const out = await runDxIntent(phrase ?? '');
       const failed =
         out.result &&
         typeof out.result === 'object' &&
         'ok' in out.result &&
         (out.result as { ok: boolean }).ok === false;
       return jsonResult(out, Boolean(failed));
+    } catch (err) {
+      return jsonResult({ ok: false, error: String(err) }, true);
+    }
+  },
+);
+
+server.tool(
+  'next',
+  'Same as run("") / empty @t3-coordinator: load operator goals (if any), snapshot open milestones/epics/issues, and return supervisorInstructions for deciding the next repo action. Does not start work.',
+  {},
+  async () => {
+    try {
+      return jsonResult({ intent: { kind: 'next' }, result: orientNext() });
     } catch (err) {
       return jsonResult({ ok: false, error: String(err) }, true);
     }

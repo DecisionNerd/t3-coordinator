@@ -16,6 +16,7 @@ export type AdminVerb =
   | 'complete';
 
 export type ParsedIntent =
+  | { kind: 'next' }
   | { kind: 'push_issue'; issueNumber: number }
   | { kind: 'complete_milestone'; milestone: string }
   | { kind: 'complete_epic'; epicNumber: number }
@@ -46,12 +47,19 @@ const ADMIN =
 /**
  * Map @t3-coordinator phrases to DX intents.
  *
+ * Orient:  "" / "next" / "what next"
  * Execute: "192", "complete M2", "complete epic 50"
  * Shape:   "critique 192", "plan milestone M2", "status epic 50", "create epic"
  */
 export function parseIntent(raw: string): ParsedIntent {
   const text = raw.trim();
-  if (!text) return { kind: 'unknown', raw };
+  // Empty @mention or explicit next → supervisor orientation brief
+  if (
+    !text ||
+    /^(next|what\s+next|orient|standup|status|go|continue|\?+)$/i.test(text)
+  ) {
+    return { kind: 'next' };
+  }
 
   // Bare issue → Path C execute
   const issueOnly = text.match(/^#?(\d+)$/);

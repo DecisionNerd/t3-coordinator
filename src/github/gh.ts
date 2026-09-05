@@ -77,6 +77,22 @@ export function listOpenIssuesInMilestone(githubRepo: string, milestoneNumber: n
   ]);
 }
 
+/** Open issues in the repo (newest first via gh default). */
+export function listOpenIssues(githubRepo: string, limit = 40): GhIssue[] {
+  return ghJson<GhIssue[]>([
+    'issue',
+    'list',
+    '--repo',
+    githubRepo,
+    '--state',
+    'open',
+    '--limit',
+    String(limit),
+    '--json',
+    'number,title,body,url,state,milestone',
+  ]);
+}
+
 /** Resolve "M2", "2", or a title substring to a milestone. */
 export function resolveMilestone(githubRepo: string, query: string): GhMilestone {
   const milestones = listMilestones(githubRepo, 'all');

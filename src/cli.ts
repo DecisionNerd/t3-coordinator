@@ -13,7 +13,7 @@ function usage(): never {
   console.error(`Usage:
   t3-coordinator start [--no-temporal]
   t3-coordinator mcp
-  t3-coordinator run "<phrase>"          # e.g. "complete M2" or "192"
+  t3-coordinator run ["<phrase>"]      # empty / omitted = next (orient); e.g. "complete M2" or "192"
   t3-coordinator defaults
   t3-coordinator defaults-set --github <owner/name> --t3-project <uuid> --cwd <path> --instance <id> --model <id> [--env env-local] [--branch main]
   t3-coordinator bind-supervisor --environment <id> --thread <threadId>
@@ -59,7 +59,6 @@ async function main(): Promise<void> {
   }
   if (cmd === 'run') {
     const phrase = args.slice(1).join(' ').trim();
-    if (!phrase) usage();
     const out = await runDxIntent(phrase);
     console.log(JSON.stringify(out, null, 2));
     if (

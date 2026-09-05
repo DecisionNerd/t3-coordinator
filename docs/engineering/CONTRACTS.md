@@ -118,7 +118,8 @@ All tools return promptly. Long implementation work is Temporal `AssignmentWorkf
 
 | Tool | Role |
 |---|---|
-| `run` | Freeform phrase router (`192`, `complete M2`, `complete epic 50`, `critique 192`, …) |
+| `run` | Freeform phrase router (empty/`next` = orient; `192`, `complete M2`, `complete epic 50`, `critique 192`, …) |
+| `next` | Same as empty `run`: goals + backlog brief for supervisor judgment |
 | `issue` | Full issue lifecycle (`status\|plan\|critique\|refine\|update\|narrow\|widen\|explain\|close\|reopen\|create\|push`) |
 | `milestone` | Full milestone lifecycle (`list\|status\|plan\|critique\|…\|create\|complete\|close`) |
 | `epic` | Parent/epic tracker (children via task-list or sub-issues; milestone optional) |

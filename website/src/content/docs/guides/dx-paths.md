@@ -11,6 +11,7 @@ Set defaults once (`t3-coordinator defaults-set …`) and bind a supervisor thre
 
 | You say | Path | What happens |
 |---|---|---|
+| *(empty)* / `next` | Orient | Review goals + backlog; decide next action (no auto-assign) |
 | `192` / `#192` | C | Push that issue (spec commit + assignment) |
 | `complete M2` | B | Push next open issue on milestone M2 |
 | `complete epic 50` | D | Push next open **child** of parent #50 (milestone optional) |
@@ -18,9 +19,11 @@ Set defaults once (`t3-coordinator defaults-set …`) and bind a supervisor thre
 | `status M2` / `plan milestone M2` / `create milestone …` / `close M2` | Milestone admin | Full milestone lifecycle |
 | `epic 50` / `status epic 50` / `create epic …` / `close epic 50` | Epic admin | Parent tracker lifecycle |
 
-Typed tools: `run`, `issue`, `milestone`, `epic`, `push_issue`, `complete_milestone`, `complete_epic`, plus low-level assign/review.
+Typed tools: `run`, `next`, `issue`, `milestone`, `epic`, `push_issue`, `complete_milestone`, `complete_epic`, plus low-level assign/review.
 
 `run` **previews** GitHub mutations; call `issue` / `milestone` / `epic` with `apply: true` to write.
+
+**Empty @mention:** `run` with no phrase (or tool `next`) returns goals + backlog + `supervisorInstructions`. Orientation never starts a worker.
 
 ## Path A — Design → plan → implement → review
 
