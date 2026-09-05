@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'website/**'
+      - 'tsconfig.build.json'
+      - 'tsconfig.json'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
