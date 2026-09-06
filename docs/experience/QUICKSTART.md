@@ -25,7 +25,7 @@ Developing from a clone: `npm install`, then `npm start` / `npm run cli` instead
 
 ```bash
 t3-coordinator auth-issue --ttl 30d --label t3-coordinator
-t3-coordinator ensure-mcp    # Codex + Cursor — so every new T3 chat sees the tools
+t3-coordinator ensure-mcp    # all providers — pick any supervisor in a new T3 chat
 t3-coordinator doctor
 ```
 

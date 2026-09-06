@@ -19,7 +19,7 @@ function usage(): never {
   t3-coordinator defaults
   t3-coordinator defaults-set [--t3-project <uuid>] [--instance <id>] [--model <id>] [--env env-local] [--branch main] [--cwd <hint>]
       # GitHub repo is detected from the current T3 checkout — do not set a sticky --github default
-  t3-coordinator ensure-mcp              # register MCP on Codex/Cursor so every new T3 chat sees tools
+  t3-coordinator ensure-mcp              # register MCP on ALL supervisor providers (Codex/Cursor/Claude/OpenCode/Grok) + enable them in T3
   t3-coordinator bind-supervisor --environment <id> --thread <threadId>   # optional; assign auto-binds from calling thread
   t3-coordinator get-binding --environment <id>
   t3-coordinator auth-issue [--ttl 30d] [--label t3-coordinator]
