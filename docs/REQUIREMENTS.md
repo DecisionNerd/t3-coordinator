@@ -10,7 +10,7 @@ Tool schemas, state machine, mailbox, and reconciliation: [`engineering/CONTRACT
 
 | ID | Requirement | Derived from | Acceptance behavior |
 |---|---|---|---|
-| FR-1 | The system shall expose MCP tools so a supervisor can assign work, inspect status, fetch delivery evidence, submit review decisions, pause/resume work, and cancel work. | Product goals; supervisor control surface | Given a frontier-model supervisor with coordinator MCP and a durable supervisor binding for the environment, when it calls `assign_work` with a committed spec SHA, then a durable assignment ID is returned promptly without holding the MCP call open for the full worker lifetime. |
+| FR-1 | The system shall expose MCP tools so a supervisor can assign work, inspect status, fetch delivery evidence, submit review decisions, pause/resume work, and cancel work. The supervisor is a thin control plane; workers perform implementation and investigations. | Product goals; supervisor control surface | Given any MCP chat with coordinator tools and valid assign context, when it calls `assign_work` / `complete` with a committed spec SHA (or auto-committed thin spec), then a durable assignment ID is returned promptly without holding the MCP call open for the full worker lifetime. Binding may be auto-created via operator inbox. |
 | FR-2 | The system shall dispatch worker sessions through stock T3 with an explicit provider instance/model and isolated worktree. | T3-native architecture | Given a valid assignment, when the coordinator dispatches, then a T3 worker thread is created/started for the selected instance in a dedicated worktree—not the shared project checkout. |
 | FR-3 | The system shall record delivery only when worktree git HEAD differs from `baseCommit` and the tip commit contains `Coordinated-By: <assignmentId>`. | Evidence-bound acceptance | Given the worker turn has left `running`, when `observeWorktreeDelivery` finds a matching trailer commit, then state becomes `delivered` with that SHA; worker chat text alone never advances state. After grace with no match → `blocked`. |
 | FR-4 | The system shall enqueue exactly one supervisor follow-up when delivery is recorded, and send it only when the bound supervisor thread is idle per T3 turn/session/queued-start/raised-hand. | Unattended continuation; mailbox | Given delivery is recorded and the bound thread is idle, when the mailbox sends, then exactly one `thread.turn.start` uses the persisted command id. Composer-draft-without-turn is not detectable and may still receive a follow-up (documented limitation). |
@@ -18,7 +18,7 @@ Tool schemas, state machine, mailbox, and reconciliation: [`engineering/CONTRACT
 | FR-6 | The system shall distinguish pause, resume, and cancel, and keep them durable across restarts. | Explicit stop semantics | **Pause:** no new dispatch; in-flight may finish; mailbox deferred. **Resume:** clears pause and flushes deferred follow-up if delivered. **Cancel:** interrupt/quarantine; no auto-continuation after restart. |
 | FR-10 | The system shall grant coordinator MCP tools only on the dedicated supervisor provider instance; worker instances shall not load those tools. | Permission boundary | Given a worker instance MCP config, when it lists tools, then assign/cancel/dispatch tools are absent. v0 spike uses Codex (or frontier) for supervisor and OpenCode/Cursor for workers. |
 | FR-11 | The system shall identify the supervisor by environment binding (`environmentId` + bound `supervisorThreadId`), not by a hardcoded model product name. | Frontier-model role | Given Fable or Astra on the bound supervisor instance, when it assigns work, then the same MCP contract and mailbox apply. Internal label `frontier` is not a T3 wire enum. |
-| FR-12 | The system shall resolve `supervisorThreadId` from an operator-established durable binding, not from model-invented ids. | Control-plane identity | Given a binding exists, when `assign_work` omits `supervisorThreadId`, then the binding is used; a mismatched override is rejected. |
+| FR-12 | The system shall resolve `supervisorThreadId` from caller thread, sticky binding, or a coordinator-created operator inbox — never from model-invented ids. | Control-plane identity | Given a binding exists, when `assign_work` omits `supervisorThreadId`, then the binding is used. Given neither caller nor binding, when assign runs, then an operator inbox thread is created and bound. Caller thread wins and rebinds. |
 
 ## Functional requirements — v1 (policy)
 
@@ -51,14 +51,15 @@ Deferred until the v0 gate in [`TESTING.md`](engineering/TESTING.md) passes.
 | FR-3 + FR-4 | Worker turn ended; worktree HEAD has `Coordinated-By` trailer; bound supervisor thread idle | Coordinator observes git and mailbox | Exactly one follow-up queued/sent to the **bound** thread with SHAs |
 | FR-3 grace | Turn ended; HEAD still `baseCommit` for full grace | Grace expires | State `blocked` with `no_delivery` |
 | FR-6 | Assignment cancelled | Restart + completion events arrive | No new dispatch; workflow remains cancelled |
-| FR-12 | Binding present; assign omits thread id | assign_work | Uses bound thread; mismatch override rejected |
+| FR-12 | Binding present; assign omits thread id | assign_work | Uses bound thread; caller thread wins and rebinds |
+| FR-12 | No binding and no caller thread | assign_work | Creates operator inbox, binds it, assignment starts |
 
 ## Constraints & assumptions
 
 - **Constraint:** T3 stays stock; extend via API/MCP only.
 - **Constraint:** Production Temporal persistence uses vanilla PostgreSQL (not Turso/SQLite). Slice may use Temporal dev server.
 - **Constraint:** Acceptance does not auto-merge.
-- **Constraint:** No dispatch without a committed specification SHA and a durable supervisor binding for the environment.
+- **Constraint:** No dispatch without a committed specification SHA. A durable supervisor mailbox binding is required; it may be auto-created as an operator inbox on first assign.
 - **Constraint:** v0 uses Temporal (`AssignmentWorkflow`); production Postgres is ADR-0002, not a slice blocker.
 - **Assumption:** T3 `thread.turn.start` + `bootstrap.prepareWorktree` and command receipts work on the **installed OVHC T3 version** (pinned in T3-INTEGRATION.md).
 - **Assumption:** Supervisor instance loads coordinator MCP from **that provider’s native config**, not from T3’s `/mcp`; workers do not share that config.

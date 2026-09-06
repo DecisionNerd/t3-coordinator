@@ -7,14 +7,25 @@ import {
   isThreadBusy,
 } from './domain/contracts';
 import { deriveAssignmentId, observeWorktreeDelivery } from './domain/gitDelivery';
+import {
+  ensureOperatorInbox,
+  OPERATOR_INBOX_FAIL_ASK,
+  type MailboxSource,
+} from './domain/operatorInbox';
 import { getT3Adapter } from './t3/adapter';
 
-export { greet } from './activities/greet';
-
+export async function greet(name: string): Promise<string> {
+  return `Hello, ${name}!`;
+}
 export async function resolveAssignWork(
   input: AssignWorkInput,
 ): Promise<
-  | { ok: true; assignmentId: string; supervisorThreadId: string }
+  | {
+      ok: true;
+      assignmentId: string;
+      supervisorThreadId: string;
+      mailboxSource: MailboxSource;
+    }
   | { ok: false; error: 'supervisor_unbound'; ask: string }
 > {
   const envThread =
@@ -27,24 +38,43 @@ export async function resolveAssignWork(
     binding,
     requestedThreadId: envThread,
   });
-  if (!resolved.ok) {
+
+  if (resolved.ok) {
+    if (resolved.shouldBind) {
+      bindSupervisor({
+        environmentId: input.environmentId,
+        supervisorThreadId: resolved.supervisorThreadId,
+      });
+    }
+    const mailboxSource: MailboxSource = envThread ? 'caller' : 'binding';
+    return {
+      ok: true,
+      assignmentId: deriveAssignmentId(input),
+      supervisorThreadId: resolved.supervisorThreadId,
+      mailboxSource,
+    };
+  }
+
+  try {
+    const inbox = await ensureOperatorInbox({
+      environmentId: input.environmentId,
+      projectId: input.repo,
+      instanceId: input.instanceId,
+      modelId: input.modelId,
+    });
+    return {
+      ok: true,
+      assignmentId: deriveAssignmentId(input),
+      supervisorThreadId: inbox.supervisorThreadId,
+      mailboxSource: 'operator_inbox',
+    };
+  } catch {
     return {
       ok: false,
       error: 'supervisor_unbound',
-      ask: 'This chat can use MCP without a sticky bind. For assign/push, pass supervisorThreadId (this T3 thread id) once — we will bind automatically — or set COORD_SUPERVISOR_THREAD_ID.',
+      ask: OPERATOR_INBOX_FAIL_ASK,
     };
   }
-  if (resolved.shouldBind) {
-    bindSupervisor({
-      environmentId: input.environmentId,
-      supervisorThreadId: resolved.supervisorThreadId,
-    });
-  }
-  return {
-    ok: true,
-    assignmentId: deriveAssignmentId(input),
-    supervisorThreadId: resolved.supervisorThreadId,
-  };
 }
 
 export async function dispatchWorker(input: {

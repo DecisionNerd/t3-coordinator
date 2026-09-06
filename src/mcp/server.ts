@@ -54,7 +54,7 @@ const server = new McpServer({
 
 server.tool(
   'run',
-  'Primary DX entry after @t3-coordinator. Repo = current T3 checkout (git root); if not in a repo, response asks which project to open. Empty/"next" = decide next action. "sitrep"/"standup"/"status" = standup. Also: "192", "complete M2", "complete epic 50", plan/critique/create/close.',
+  'Primary DX entry after @t3-coordinator. Thin supervisor: read next/sitrep/requirements, then dispatch workers — do not implement or deep-investigate in this chat. Repo = current checkout. Empty/"next" = decide. "sitrep"/"standup"/"status" = standup. Also: "192", "complete M2", "complete epic 50", plan/critique/create/close.',
   { phrase: z.string().optional().default('') },
   async ({ phrase }) => {
     try {
@@ -73,7 +73,7 @@ server.tool(
 
 server.tool(
   'next',
-  'Same as run("") / empty @t3-coordinator: load operator goals (if any), snapshot open milestones/epics/issues, and return supervisorInstructions for deciding the next repo action. Does not start work.',
+  'Orient only: goals + backlog + supervisorInstructions. Thin supervisor decides next phrase; does not start work or investigate the repo.',
   {},
   async () => {
     try {
@@ -234,7 +234,7 @@ server.tool(
 
 server.tool(
   'push_issue',
-  'Path C: dispatch one issue (same as run("192")). Refuses if the issue is an epic with open children — use complete_epic.',
+  'Path C: dispatch one issue to a worker (same as run("192")). Supervisor does not implement. Refuses if the issue is an epic with open children — use complete_epic.',
   { issueNumber: z.number().int().positive() },
   async ({ issueNumber }) => {
     try {
@@ -249,7 +249,7 @@ server.tool(
 
 server.tool(
   'complete_milestone',
-  'Path B: push next open milestone issue (same as run("complete M2")). Repeat after ACCEPT.',
+  'Path B: dispatch next open milestone issue to a worker (same as run("complete M2")). Supervisor does not implement. Repeat after ACCEPT.',
   { milestone: z.string() },
   async ({ milestone }) => {
     try {
@@ -264,7 +264,7 @@ server.tool(
 
 server.tool(
   'complete_epic',
-  'Path D: push next open child of a parent/epic issue (same as run("complete epic 50")). Milestone not required.',
+  'Path D: dispatch next open child of a parent/epic issue to a worker (same as run("complete epic 50")). Supervisor does not implement. Milestone not required.',
   { epicNumber: z.number().int().positive() },
   async ({ epicNumber }) => {
     try {
@@ -299,14 +299,14 @@ server.tool(
 
 server.tool(
   'get_binding',
-  'Show the durable supervisor thread binding for an environment',
+  'Show the durable mailbox thread binding for an environment (caller / sticky / operator inbox)',
   { environmentId: z.string() },
   async ({ environmentId }) => jsonResult({ binding: getSupervisorBinding(environmentId) ?? null }),
 );
 
 server.tool(
   'assign_work',
-  'Low-level: start a durable assignment when you already have specSha/baseCommit (prefer run / push_issue / complete_milestone for DX paths)',
+  'Low-level: start a durable worker assignment when you already have specSha/baseCommit (prefer run / push_issue / complete_milestone). Auto-binds an operator mailbox if needed. Supervisor does not implement.',
   {
     repo: z.string(),
     specSha: z.string(),
@@ -345,6 +345,7 @@ server.tool(
       assignmentId: resolved.assignmentId,
       workflowId: handle.workflowId,
       supervisorThreadId: resolved.supervisorThreadId,
+      mailboxSource: resolved.mailboxSource,
     });
   },
 );

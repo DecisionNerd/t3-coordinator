@@ -124,8 +124,9 @@ export function assignmentIdempotencyKey(input: AssignWorkInput): string {
 
 /**
  * Resolve which T3 thread owns mailbox follow-ups for an assignment.
- * Any chat can be the supervisor: prefer the calling thread id, else the saved binding.
- * Sticky bind is optional — new chats do not need bind-supervisor just to use MCP.
+ * Prefer the calling thread id, else the saved binding.
+ * Sticky bind is optional for MCP visibility. When both are absent, the activity
+ * layer creates a durable operator inbox (not model-invented ids) — see ensureOperatorInbox.
  */
 export function resolveSupervisorThread(input: {
   binding: SupervisorBinding | undefined;

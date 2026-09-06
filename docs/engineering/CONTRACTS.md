@@ -7,30 +7,43 @@ Decisions closing the design critique: [`v0-gate-fix-plan.md`](v0-gate-fix-plan.
 
 ## Supervisor role
 
-The **supervisor** is a frontier-model session in T3 (Fable, Astra, or equivalent). The coordinator addresses it by:
+The **supervisor** is any operator MCP session (T3 frontier chat, Cursor, Codex, …) that holds coordinator tools. It is a **thin control plane**: read requirements / `next` / `sitrep`, then `complete` / `push_issue` / `assign_work` / `submit_review`. **Implementation and investigations run in worker sub-agents**, not in the supervisor chat.
+
+The coordinator addresses mailbox follow-ups by:
 
 | Field | Meaning |
 |---|---|
 | `environmentId` | T3 environment |
-| `supervisorThreadId` | Exact T3 thread for follow-ups — from **durable binding**, not model invention |
+| `supervisorThreadId` | Exact T3 thread for follow-ups — from caller, sticky bind, or coordinator-created **operator inbox** (never model-invented) |
 | `supervisorModelClass` | Role label in *our* records (`frontier`); **not** sent to T3 |
 | `supervisorInstanceId` | T3 `ModelSelection.instanceId` |
 | `supervisorModelId` | T3 `ModelSelection.model` (e.g. Fable, Astra); never the only identity |
 
-### Supervisor binding (optional for MCP visibility)
+### Supervisor binding (mailbox destination)
 
-MCP tools are registered on the **provider** (Codex/Cursor) via `t3-coordinator ensure-mcp` so **every new T3 chat** can see them. No sticky bind is required to call `run` / `sitrep` / `issue`.
+MCP tools are registered on the **provider** (Codex/Cursor) via `t3-coordinator ensure-mcp` so **any new chat** can see them. No sticky bind is required to call `run` / `sitrep` / `issue`.
 
-For assign/push mailbox follow-ups:
+For assign/push mailbox follow-ups, resolve in order:
 
-- Prefer `supervisorThreadId` on the call (this chat’s thread) — we **auto-bind** and update `~/.t3-coordinator/bindings.json`.
-- Or env `COORD_SUPERVISOR_THREAD_ID` / `T3_THREAD_ID`.
-- Or a prior `bind-supervisor` for the environment.
+1. Prefer `supervisorThreadId` on the call (this T3 chat’s thread) — we **auto-bind** and update `~/.t3-coordinator/bindings.json`.
+2. Or env `COORD_SUPERVISOR_THREAD_ID` / `T3_THREAD_ID`.
+3. Or a prior sticky bind for the environment.
+4. Else **create and bind** a durable operator inbox thread (`coord:operator-inbox:<environmentId>`) so Cursor/MCP chats can assign without ceremony.
 
-Caller thread **wins** over a stale binding (new chats are first-class). If nothing is available, `assign_work` returns `supervisor_unbound` with an ask — not a hard requirement to bind before opening MCP.
+Caller thread **wins** over a stale binding. `supervisor_unbound` is returned only if T3 cannot create the operator inbox (doctor/auth), with an ask to retry the same assign — not to investigate binding in the supervisor chat.
 
 Workers are separate T3 threads: `workerThreadId` + T3 `instanceId` + `model` + `worktreePath`.
 
+### Thin supervisor (normative)
+
+| Supervisor may | Supervisor must not |
+|---|---|
+| `next` / `sitrep` / read requirements | Implement features in the supervisor session |
+| `complete` / `push_issue` / `assign_work` | Deep-investigate binding, git, or codebase when assign fails |
+| `get_work_status` / `get_delivery` / `submit_review` | Debug coordinator setup instead of retrying after doctor/auth |
+| Light backlog shape (`plan` / `critique` with apply) | Parallelize a whole milestone in v0 |
+
+Investigations belong in a **worker assignment** (issue + goal), same as implementation.
 ## Assignment state machine
 
 ```mermaid
@@ -132,14 +145,14 @@ GitHub mutations default to **preview**; pass `apply: true` to write.
 | `repo` | yes | Allowed-repo list |
 | `specSha` | yes | Committed specification |
 | `baseCommit` | yes | Worker worktree base |
-| `environmentId` | yes | Must match a supervisor binding |
-| `supervisorThreadId` | no | Defaults from binding; mismatch → reject |
+| `environmentId` | yes | Environment for mailbox binding / operator inbox |
+| `supervisorThreadId` | no | Caller wins; else binding; else auto operator inbox |
 | `instanceId` | yes | Worker T3 provider instance |
 | `modelId` | yes | Worker model on that instance |
 | `goal` | yes | Short bound; does not replace `specSha` |
 
 **Returns:** `{ assignmentId }`  
-**Errors:** `supervisor_unbound` (with ask), unknown repo, missing spec SHA, concurrency cap.
+**Errors:** `supervisor_unbound` only when operator inbox create/bind fails (ask → doctor/auth, retry same assign), unknown repo, missing spec SHA, concurrency cap.
 
 Idempotency key: (`repo`, `specSha`, `baseCommit`, `environmentId`, `instanceId`, `modelId`) or client-supplied `assignmentId`.
 

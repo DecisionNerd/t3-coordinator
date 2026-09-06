@@ -1,6 +1,10 @@
 {
   "version": 1,
   "description": "Optional notes for how you prepare specs and reviews. Edit freely; the coordinator does not require this file.",
+  "supervisor": {
+    "role": "thin",
+    "notes": "Supervisor: next/sitrep/requirements + assign/review only. Implementation and investigations go to worker sub-agents via complete/push_issue/assign_work."
+  },
   "testbed": {
     "repo": "https://github.com/DecisionNerd/dev-skills",
     "notes": "Suggested first T3 project — change when you move to another repo"
@@ -10,7 +14,7 @@
     "challenge": ["RedTeam"],
     "design": ["Impeccable"],
     "track_intent": ["issues", "milestones", "recon", "check-readiness", "merge-it"],
-    "notes": "Omit or replace any helper; GitHub + supervisor judgment alone is enough"
+    "notes": "Omit or replace any helper; GitHub + thin supervisor + workers is enough"
   },
   "dxPaths": "docs/experience/DX-PATHS.md"
 }

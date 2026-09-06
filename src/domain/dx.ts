@@ -37,18 +37,22 @@ export async function startAssignmentForIssue(input: {
   issue: GhIssue;
   context?: ProjectContext & { t3ProjectId: string; instanceId: string; modelId: string };
   defaults?: ProjectDefaults;
-}): Promise<{
-  ok: true;
-  path: 'C';
-  githubRepo: string;
-  issue: { number: number; title: string; url: string };
-  assignmentId: string;
-  workflowId: string;
-  supervisorThreadId: string;
-  specSha: string;
-  baseCommit: string;
-  specPath: string;
-}> {
+}): Promise<
+  | {
+      ok: true;
+      path: 'C';
+      githubRepo: string;
+      issue: { number: number; title: string; url: string };
+      assignmentId: string;
+      workflowId: string;
+      supervisorThreadId: string;
+      mailboxSource: string;
+      specSha: string;
+      baseCommit: string;
+      specPath: string;
+    }
+  | { ok: false; error: 'supervisor_unbound'; ask: string }
+> {
   const ctx = input.context ?? requireAssignContext({ defaults: input.defaults });
   const { specSha, baseCommit, specPath } = commitIssueSpec(ctx.projectCwd, input.issue);
   const goal = buildIssueGoal(input.issue, ctx.githubRepo);
@@ -65,7 +69,7 @@ export async function startAssignmentForIssue(input: {
   };
   const resolved = await resolveAssignWork(assign);
   if (!resolved.ok) {
-    throw new Error(resolved.error);
+    return { ok: false, error: resolved.error, ask: resolved.ask };
   }
   const client = await temporalClient();
   const handle = await client.workflow.start(assignmentWorkflow, {
@@ -91,6 +95,7 @@ export async function startAssignmentForIssue(input: {
     assignmentId: resolved.assignmentId,
     workflowId: handle.workflowId,
     supervisorThreadId: resolved.supervisorThreadId,
+    mailboxSource: resolved.mailboxSource,
     specSha,
     baseCommit,
     specPath,
@@ -154,6 +159,9 @@ export async function completeMilestone(milestoneQuery: string, defaults?: Proje
   }
   const next = [...open].sort((a, b) => a.number - b.number)[0]!;
   const started = await startAssignmentForIssue({ issue: next, context: ctx, defaults });
+  if (!started.ok) {
+    return started;
+  }
   return {
     ok: true as const,
     path: 'B' as const,
@@ -197,6 +205,9 @@ export async function completeEpic(epicNumber: number, defaults?: ProjectDefault
   const nextMeta = [...openChildren].sort((a, b) => a.number - b.number)[0]!;
   const next = getIssue(ctx.githubRepo, nextMeta.number);
   const started = await startAssignmentForIssue({ issue: next, context: ctx, defaults });
+  if (!started.ok) {
+    return started;
+  }
   return {
     ok: true as const,
     path: 'D' as const,

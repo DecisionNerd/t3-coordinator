@@ -1,6 +1,6 @@
 # Experience
 
-How to run **t3-coordinator** day to day: install, bind a supervisor, assign work, and review deliveries — without carrying messages between agents.
+How to run **t3-coordinator** day to day: install, assign work from any MCP chat, and review deliveries — without carrying messages between agents.
 
 **Published site:** [decisionnerd.github.io/t3-coordinator](https://decisionnerd.github.io/t3-coordinator/) (`website/` · `npm run docs:dev`)
 

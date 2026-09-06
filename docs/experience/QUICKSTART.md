@@ -29,9 +29,9 @@ t3-coordinator ensure-mcp    # all providers — pick any supervisor in a new T3
 t3-coordinator doctor
 ```
 
-`ensure-mcp` writes the supervisor provider MCP config. **Start a new T3 chat** (or restart the provider session) after that — no per-thread bind is required to see tools.
+`ensure-mcp` writes the supervisor provider MCP config. **Start a new chat** (or restart the provider session) after that — any MCP chat can assign. No sticky bind is required; the first assign auto-creates an operator inbox mailbox if needed.
 
-Optional: `bind-supervisor` only if you want a sticky mailbox thread; assign/push can pass `supervisorThreadId` and auto-bind.
+Optional: `bind-supervisor` only if you want a specific T3 thread to receive follow-ups; caller thread / env still wins when provided.
 
 Optional: copy and edit a workflow profile so helpers match how you work — [OPERATING-PROFILE.md](OPERATING-PROFILE.md).
 
@@ -56,13 +56,13 @@ Leave that running. The host spawns `t3-coordinator mcp` when the supervisor nee
 
 ## First assignment (DX)
 
-From the supervisor (after ensure-mcp + optional worker prefs):
+From any MCP supervisor chat (after ensure-mcp + optional worker prefs). Stay thin: dispatch workers; do not implement here.
 
 | Phrase | Effect |
 |---|---|
-| `192` | Push issue #192 |
-| `complete M2` | Next open issue on milestone M2 |
-| `complete epic 50` | Next open child of parent #50 |
+| `192` | Push issue #192 to a worker |
+| `complete M2` | Next open issue on milestone M2 → worker |
+| `complete epic 50` | Next open child of parent #50 → worker |
 | `create epic …` / `close 192` / `status M2` | Lifecycle (mutations: tools + `apply:true`) |
 
 Then wait for delivery; supervisor calls `submit_review` with ACCEPT / REVISE / BLOCKED.

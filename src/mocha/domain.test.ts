@@ -12,6 +12,10 @@ import {
 } from '../domain/contracts';
 import { bindSupervisor, getSupervisorBinding, readBindings } from '../domain/bindings';
 import { deriveAssignmentId } from '../domain/gitDelivery';
+import {
+  ensureOperatorInbox,
+  OPERATOR_INBOX_FAIL_ASK,
+} from '../domain/operatorInbox';
 import { FakeT3Adapter } from '../t3/adapter';
 
 describe('delivery trailer', () => {
@@ -119,6 +123,49 @@ describe('supervisor binding resolve', () => {
     assert.equal(binding.supervisorThreadId, 'thr_1');
     assert.equal(getSupervisorBinding('env-a', filePath)?.supervisorThreadId, 'thr_1');
     assert.equal(readBindings(filePath).version, 1);
+  });
+});
+
+describe('operator inbox', () => {
+  it('creates and binds once; second call reuses binding', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 't3c-inbox-'));
+    const filePath = path.join(dir, 'bindings.json');
+    const adapter = new FakeT3Adapter();
+    const first = await ensureOperatorInbox({
+      environmentId: 'env-local',
+      projectId: 'proj',
+      instanceId: 'cursor',
+      modelId: 'composer',
+      bindingsFilePath: filePath,
+      adapter,
+    });
+    assert.equal(first.created, true);
+    assert.ok(first.supervisorThreadId.length > 8);
+    assert.equal(adapter.dispatches.length, 1);
+    assert.match(adapter.dispatches[0]!.createThread!.title, /operator-inbox:env-local/);
+
+    const second = await ensureOperatorInbox({
+      environmentId: 'env-local',
+      projectId: 'proj',
+      instanceId: 'cursor',
+      modelId: 'composer',
+      bindingsFilePath: filePath,
+      adapter,
+    });
+    assert.equal(second.created, false);
+    assert.equal(second.supervisorThreadId, first.supervisorThreadId);
+    assert.equal(adapter.dispatches.length, 1);
+    assert.equal(
+      getSupervisorBinding('env-local', filePath)?.supervisorThreadId,
+      first.supervisorThreadId,
+    );
+  });
+
+  it('fail ask steers retry not investigation', () => {
+    assert.match(OPERATOR_INBOX_FAIL_ASK, /doctor/i);
+    assert.match(OPERATOR_INBOX_FAIL_ASK, /retry/i);
+    assert.doesNotMatch(OPERATOR_INBOX_FAIL_ASK, /supervisor chat/i);
+    assert.match(OPERATOR_INBOX_FAIL_ASK, /Do not investigate binding/i);
   });
 });
 

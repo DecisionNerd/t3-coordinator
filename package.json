@@ -20,7 +20,7 @@
     "workflow": "ts-node src/client.ts",
     "mcp": "ts-node src/mcp/server.ts",
     "cli": "ts-node src/cli.ts",
-    "test": "mocha --exit --timeout 30000 --require ts-node/register --require source-map-support/register 'src/mocha/*.{test.ts,test.cjs}'",
+    "test": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' mocha --exit --timeout 30000 --require ts-node/register --require source-map-support/register 'src/mocha/*.{test.ts,test.cjs}'",
     "docs:dev": "npm run dev --prefix website",
     "docs:build": "npm run build --prefix website",
     "docs:preview": "npm run preview --prefix website"

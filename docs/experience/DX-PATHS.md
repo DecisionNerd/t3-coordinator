@@ -2,6 +2,8 @@
 
 How to talk to **@t3-coordinator** (MCP `run` phrase or typed tools). GitHub holds intent; the coordinator shapes backlog **and** runs durable handoffs.
 
+**Thin supervisor:** almost all work (implementation **and** investigations) happens in worker sub-agents. The supervisor mostly reads requirements / `next` / `sitrep`, then `complete` / `push_issue` / `submit_review`. Do not dig the repo or implement in the supervisor chat.
+
 Set worker prefs once if you will push work (`defaults-set --t3-project … --instance … --model …`). **GitHub repo is not a sticky default** — it is detected from the current T3 project checkout (git root). If not in a repo, tools ask which project to open.
 
 ## Phrases (after @t3-coordinator)
@@ -90,6 +92,8 @@ Pushing the **parent** number while children remain open is rejected — use `co
 | Assign without a committed spec | `plan` + `commitSpec` or let push auto-commit a thin spec |
 | Parallelize a whole milestone/epic in v0 | One critical-path child at a time |
 | Give workers coordinator MCP | Supervisor provider only |
+| Implement or deep-investigate in the supervisor chat | Dispatch a worker (`complete` / `push_issue` / `assign_work`) |
+| Debug “supervisor binding” when assign fails | Run doctor/auth if asked, then retry the same phrase |
 
 ## Related
 

@@ -38,6 +38,8 @@ export function orientNext() {
     : null;
 
   const supervisorInstructions = [
+    'Thin supervisor: almost no tool use beyond reading requirements / next / sitrep, then assign and review.',
+    'Implementation and investigations belong in worker sub-agents (complete / push_issue / assign_work) — do not dig the repo or implement in this chat.',
     'The operator invoked t3-coordinator with no specific command.',
     '1) Review goals (if any) against the live backlog below.',
     '2) Decide the single best next action in this repo (shape backlog, push one issue, complete a milestone/epic, or ask the operator).',
