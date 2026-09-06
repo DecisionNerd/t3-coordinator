@@ -1,8 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { coordinatorHome } from './bindings';
-import { readDefaults } from './defaults';
 import { readGoals } from './goals';
+import { tryResolveProjectContext } from './repoContext';
 import {
   listClosedIssues,
   listMergedPullRequests,
@@ -74,11 +74,10 @@ function readOperatorBlockers(home: string): string[] {
 
 /**
  * Standup / sitrep: recently accomplished, blockers, what's coming up.
- * Read-only — supervisor narrates; no assignments started.
+ * Repo from current checkout — ask if not in a git repo.
  */
 export function sitrep(windowDays = DEFAULT_WINDOW_DAYS) {
   const home = coordinatorHome();
-  const defaults = readDefaults();
   const goals = readGoals(home);
   const operatorBlockers = readOperatorBlockers(home);
   const days = Math.max(1, Math.min(90, windowDays));
@@ -91,30 +90,38 @@ export function sitrep(windowDays = DEFAULT_WINDOW_DAYS) {
     '4) To execute after the sitrep, use next / a concrete phrase (192, complete M2, …).',
   ];
 
-  if (!defaults) {
+  const resolved = tryResolveProjectContext();
+  if (!resolved.ok) {
     return {
-      ok: true as const,
+      ok: false as const,
       kind: 'sitrep' as const,
       mode: 'standup' as const,
       windowDays: days,
+      error: 'need_repo' as const,
+      ask: resolved.ask,
+      detail: resolved.detail,
       goals: goals ?? { version: 1 as const, goals: [], notes: 'No goals set.' },
       accomplished: { issuesClosed: [], prsMerged: [], notes: [] as string[] },
       blockers: {
         operatorNotes: operatorBlockers,
         issues: [] as ReturnType<typeof summarizeIssue>[],
-        setup: ['Missing ~/.t3-coordinator/defaults.json — run defaults-set.'],
+        setup: [resolved.ask],
       },
       comingUp: { milestones: [], epics: [], suggestedNext: [] as string[] },
       openPullRequests: [],
-      supervisorInstructions,
+      supervisorInstructions: [
+        ...supervisorInstructions,
+        '5) Not in a git repo — ask which T3 project to use, then retry sitrep.',
+      ],
       narrativeHints: {
-        accomplished: 'Nothing from GitHub yet — defaults missing.',
-        blockers: 'Setup: defaults.json required.',
-        comingUp: 'Set defaults, then re-run sitrep.',
+        accomplished: 'No repo context.',
+        blockers: resolved.ask,
+        comingUp: 'Open a T3 project checkout first.',
       },
     };
   }
 
+  const ctx = resolved.context;
   let closed: GhIssue[] = [];
   let open: GhIssue[] = [];
   let merged: GhPullRequest[] = [];
@@ -129,17 +136,13 @@ export function sitrep(windowDays = DEFAULT_WINDOW_DAYS) {
   let ghError: string | null = null;
 
   try {
-    closed = listClosedIssues(defaults.githubRepo, 30).filter((i) =>
-      withinDays(i.closedAt, days),
-    );
-    open = listOpenIssues(defaults.githubRepo, 50);
-    merged = listMergedPullRequests(defaults.githubRepo, 20).filter((p) =>
-      withinDays(p.mergedAt, days),
-    );
-    openPrs = listOpenPullRequests(defaults.githubRepo, 20);
-    const openMs = listMilestones(defaults.githubRepo, 'open').filter((m) => m.open_issues > 0);
+    closed = listClosedIssues(ctx.githubRepo, 30).filter((i) => withinDays(i.closedAt, days));
+    open = listOpenIssues(ctx.githubRepo, 50);
+    merged = listMergedPullRequests(ctx.githubRepo, 20).filter((p) => withinDays(p.mergedAt, days));
+    openPrs = listOpenPullRequests(ctx.githubRepo, 20);
+    const openMs = listMilestones(ctx.githubRepo, 'open').filter((m) => m.open_issues > 0);
     milestones = openMs.map((m) => {
-      const issues = listOpenIssuesInMilestone(defaults.githubRepo, m.number);
+      const issues = listOpenIssuesInMilestone(ctx.githubRepo, m.number);
       const next = [...issues].sort((a, b) => a.number - b.number)[0] ?? null;
       return {
         number: m.number,
@@ -157,14 +160,13 @@ export function sitrep(windowDays = DEFAULT_WINDOW_DAYS) {
   const epics = open.filter(looksLikeEpic).map(summarizeIssue);
   const setupBlockers: string[] = [];
   if (ghError) setupBlockers.push(`GitHub error: ${ghError}`);
-  if (operatorBlockers.length === 0 && blockedIssues.length === 0 && !ghError) {
-    // keep empty — healthy
-  }
 
   const suggestedNext: string[] = [];
   for (const m of milestones) {
     if (m.suggestedNext) {
-      suggestedNext.push(`complete ${m.title.match(/^M\d+/i)?.[0] ?? m.title} → #${m.suggestedNext.number}`);
+      suggestedNext.push(
+        `complete ${m.title.match(/^M\d+/i)?.[0] ?? m.title} → #${m.suggestedNext.number}`,
+      );
     }
   }
   for (const e of epics.slice(0, 3)) {
@@ -188,7 +190,9 @@ export function sitrep(windowDays = DEFAULT_WINDOW_DAYS) {
     kind: 'sitrep' as const,
     mode: 'standup' as const,
     windowDays: days,
-    githubRepo: defaults.githubRepo,
+    githubRepo: ctx.githubRepo,
+    projectCwd: ctx.projectCwd,
+    repoSource: ctx.source,
     goals: goals ?? {
       version: 1 as const,
       goals: [] as { id?: string; text: string; priority?: number }[],

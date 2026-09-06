@@ -1,7 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { ProjectDefaults } from './defaults';
 import type { GhIssue } from '../github/gh';
 
 function git(cwd: string, args: string[]): string {
@@ -61,10 +60,10 @@ export function commitIssueSpec(projectCwd: string, issue: GhIssue): {
   return { specSha, baseCommit, specPath: rel };
 }
 
-export function buildIssueGoal(issue: GhIssue, defaults: ProjectDefaults): string {
+export function buildIssueGoal(issue: GhIssue, githubRepo: string): string {
   return [
     `Implement GitHub issue #${issue.number}: ${issue.title}`,
-    `Repo: ${defaults.githubRepo}`,
+    `Repo: ${githubRepo}`,
     `URL: ${issue.url}`,
     'Follow the committed spec under .coordinator/specs/.',
     'When finished, commit with Coordinated-By trailer for this assignment.',

@@ -5,7 +5,7 @@ description: Issue, milestone, and epic lifecycles with @t3-coordinator phrases.
 
 Talk to **@t3-coordinator** with short phrases (MCP `run`) or typed tools. GitHub holds the backlog; the coordinator shapes it **and** runs durable handoffs.
 
-Set defaults once (`t3-coordinator defaults-set …`) and bind a supervisor thread before execute phrases.
+Repo = **current T3 checkout** (git root via `gh`/origin). No sticky default github repo — if not in a repo, tools ask which project to open. Optional: `defaults-set --t3-project … --instance … --model …` for push/assign. Bind a supervisor thread before execute phrases.
 
 ## Phrases
 

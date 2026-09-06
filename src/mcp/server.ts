@@ -20,6 +20,7 @@ import { epicStatus, EPIC_BODY_TEMPLATE } from '../domain/epic';
 import { orientNext } from '../domain/orient';
 import { sitrep } from '../domain/sitrep';
 import { readDefaults } from '../domain/defaults';
+import { needRepoResult, tryResolveProjectContext } from '../domain/repoContext';
 import {
   assignmentWorkflow,
   cancelSignal,
@@ -53,7 +54,7 @@ const server = new McpServer({
 
 server.tool(
   'run',
-  'Primary DX entry after @t3-coordinator. Empty/"next" = decide next action. "sitrep"/"standup"/"status" = standup check-in (accomplished, blockers, coming up). Also: "192", "complete M2", "complete epic 50", plan/critique/create/close. Mutations preview unless issue/milestone tools use apply:true.',
+  'Primary DX entry after @t3-coordinator. Repo = current T3 checkout (git root); if not in a repo, response asks which project to open. Empty/"next" = decide next action. "sitrep"/"standup"/"status" = standup. Also: "192", "complete M2", "complete epic 50", plan/critique/create/close.',
   { phrase: z.string().optional().default('') },
   async ({ phrase }) => {
     try {
@@ -134,6 +135,8 @@ server.tool(
       }
       return jsonResult(runIssueCommand(args));
     } catch (err) {
+      const need = needRepoResult(err);
+      if (need) return jsonResult(need, true);
       return jsonResult({ ok: false, error: String(err) }, true);
     }
   },
@@ -172,6 +175,8 @@ server.tool(
       }
       return jsonResult(runMilestoneCommand(args));
     } catch (err) {
+      const need = needRepoResult(err);
+      if (need) return jsonResult(need, true);
       return jsonResult({ ok: false, error: String(err) }, true);
     }
   },
@@ -220,6 +225,8 @@ server.tool(
       // plan / critique / review
       return jsonResult(await runDxIntent(`${args.command} epic ${args.epicNumber}`));
     } catch (err) {
+      const need = needRepoResult(err);
+      if (need) return jsonResult(need, true);
       return jsonResult({ ok: false, error: String(err) }, true);
     }
   },
@@ -233,6 +240,8 @@ server.tool(
     try {
       return jsonResult(await pushIssue(issueNumber));
     } catch (err) {
+      const need = needRepoResult(err);
+      if (need) return jsonResult(need, true);
       return jsonResult({ ok: false, error: String(err) }, true);
     }
   },
@@ -246,6 +255,8 @@ server.tool(
     try {
       return jsonResult(await completeMilestone(milestone));
     } catch (err) {
+      const need = needRepoResult(err);
+      if (need) return jsonResult(need, true);
       return jsonResult({ ok: false, error: String(err) }, true);
     }
   },
@@ -259,6 +270,8 @@ server.tool(
     try {
       return jsonResult(await completeEpic(epicNumber));
     } catch (err) {
+      const need = needRepoResult(err);
+      if (need) return jsonResult(need, true);
       return jsonResult({ ok: false, error: String(err) }, true);
     }
   },
@@ -266,9 +279,22 @@ server.tool(
 
 server.tool(
   'get_defaults',
-  'Show ~/.t3-coordinator/defaults.json used by run / push_issue / complete_milestone',
+  'Show optional worker prefs (~/.t3-coordinator/defaults.json) plus the GitHub repo detected from the current checkout. There is no sticky default github repo.',
   {},
-  async () => jsonResult({ defaults: readDefaults(), path: '~/.t3-coordinator/defaults.json' }),
+  async () => {
+    const detected = tryResolveProjectContext();
+    return jsonResult({
+      defaults: readDefaults(),
+      path: '~/.t3-coordinator/defaults.json',
+      detectedRepo: detected.ok
+        ? {
+            githubRepo: detected.context.githubRepo,
+            projectCwd: detected.context.projectCwd,
+            source: detected.context.source,
+          }
+        : { error: detected.error, ask: detected.ask, detail: detected.detail },
+    });
+  },
 );
 
 server.tool(

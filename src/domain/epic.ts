@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { getIssue, type GhIssue } from '../github/gh';
-import { requireDefaults } from './defaults';
+import { resolveProjectContext } from './repoContext';
 
 export interface EpicChild {
   number: number;
@@ -22,7 +22,7 @@ function ghJsonLoose<T>(args: string[]): T | null {
 }
 
 function repo(): string {
-  return requireDefaults().githubRepo;
+  return resolveProjectContext().githubRepo;
 }
 
 /** Parse `- [ ] #12` / `- [x] #12` task-list children from epic body. */

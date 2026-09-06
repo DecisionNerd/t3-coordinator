@@ -3,8 +3,9 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { bindSupervisor, bindingsPath, getSupervisorBinding } from './domain/bindings';
-import { defaultsPath, readDefaults, writeDefaults } from './domain/defaults';
+import { defaultsPath, mergeDefaults, readDefaults } from './domain/defaults';
 import { runDxIntent } from './domain/dx';
+import { tryResolveProjectContext } from './domain/repoContext';
 import { credentialsPath, readT3Credentials, writeT3Credentials } from './t3/credentials';
 import { createConfiguredT3Adapter } from './t3/httpAdapter';
 import { FakeT3Adapter } from './t3/adapter';
@@ -15,7 +16,8 @@ function usage(): never {
   t3-coordinator mcp
   t3-coordinator run ["<phrase>"]      # empty / omitted = next (orient); e.g. "complete M2" or "192"
   t3-coordinator defaults
-  t3-coordinator defaults-set --github <owner/name> --t3-project <uuid> --cwd <path> --instance <id> --model <id> [--env env-local] [--branch main]
+  t3-coordinator defaults-set [--t3-project <uuid>] [--instance <id>] [--model <id>] [--env env-local] [--branch main] [--cwd <hint>]
+      # GitHub repo is detected from the current T3 checkout — do not set a sticky --github default
   t3-coordinator bind-supervisor --environment <id> --thread <threadId>
   t3-coordinator get-binding --environment <id>
   t3-coordinator auth-issue [--ttl 30d] [--label t3-coordinator]
@@ -72,36 +74,79 @@ async function main(): Promise<void> {
     return;
   }
   if (cmd === 'defaults') {
+    const detected = tryResolveProjectContext();
     console.log(
-      JSON.stringify({ ok: true, path: defaultsPath(), defaults: readDefaults() }, null, 2),
+      JSON.stringify(
+        {
+          ok: true,
+          path: defaultsPath(),
+          defaults: readDefaults(),
+          note: 'GitHub repo is detected from the current checkout, not a sticky default.',
+          detectedRepo: detected.ok
+            ? {
+                githubRepo: detected.context.githubRepo,
+                projectCwd: detected.context.projectCwd,
+                source: detected.context.source,
+              }
+            : { error: detected.error, ask: detected.ask, detail: detected.detail },
+        },
+        null,
+        2,
+      ),
     );
     return;
   }
   if (cmd === 'defaults-set') {
-    const githubRepo = readFlag(args, '--github');
     const t3ProjectId = readFlag(args, '--t3-project');
     const projectCwd = readFlag(args, '--cwd');
     const instanceId = readFlag(args, '--instance');
     const modelId = readFlag(args, '--model');
-    const environmentId = readFlag(args, '--env') ?? 'env-local';
-    const baseBranch = readFlag(args, '--branch') ?? 'main';
-    if (!githubRepo || !t3ProjectId || !projectCwd || !instanceId || !modelId) usage();
-    const absCwd = path.resolve(projectCwd);
-    if (!fs.existsSync(absCwd)) {
-      console.error(`cwd does not exist: ${absCwd}`);
-      process.exit(1);
+    const environmentId = readFlag(args, '--env');
+    const baseBranch = readFlag(args, '--branch');
+    const deprecatedGithub = readFlag(args, '--github');
+    if (deprecatedGithub) {
+      console.error(
+        'Warning: --github is ignored. Repo is detected from the current T3 checkout (git root + remote/gh).',
+      );
     }
-    const defaults = writeDefaults({
-      version: 1,
-      environmentId,
-      t3ProjectId,
-      githubRepo,
-      projectCwd: absCwd,
-      baseBranch,
-      instanceId,
-      modelId,
+    if (!t3ProjectId && !instanceId && !modelId && !projectCwd && !environmentId && !baseBranch) {
+      usage();
+    }
+    if (projectCwd) {
+      const absCwd = path.resolve(projectCwd);
+      if (!fs.existsSync(absCwd)) {
+        console.error(`cwd does not exist: ${absCwd}`);
+        process.exit(1);
+      }
+    }
+    const defaults = mergeDefaults({
+      ...(t3ProjectId ? { t3ProjectId } : {}),
+      ...(instanceId ? { instanceId } : {}),
+      ...(modelId ? { modelId } : {}),
+      ...(environmentId ? { environmentId } : {}),
+      ...(baseBranch ? { baseBranch } : {}),
+      ...(projectCwd ? { projectCwd: path.resolve(projectCwd) } : {}),
+      githubRepo: undefined,
     });
-    console.log(JSON.stringify({ ok: true, path: defaultsPath(), defaults }, null, 2));
+    const detected = tryResolveProjectContext();
+    console.log(
+      JSON.stringify(
+        {
+          ok: true,
+          path: defaultsPath(),
+          defaults,
+          detectedRepo: detected.ok
+            ? {
+                githubRepo: detected.context.githubRepo,
+                projectCwd: detected.context.projectCwd,
+                source: detected.context.source,
+              }
+            : { error: detected.error, ask: detected.ask },
+        },
+        null,
+        2,
+      ),
+    );
     return;
   }
   if (cmd === 'version' || cmd === '--version' || cmd === '-v') {

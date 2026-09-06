@@ -52,16 +52,16 @@ Add MCP on the **supervisor provider only** (not workers):
 
 Optional: copy and edit a workflow profile so helpers match how you work — [Customize your workflow](/t3-coordinator/guides/customize-workflow/).
 
-Point DX phrases at a repo (once per machine / project):
+GitHub repo comes from the **current T3 project checkout** (no sticky `--github` default). Optional worker prefs for push/assign:
 
 ```bash
 t3-coordinator defaults-set \
-  --github-repo owner/repo \
-  --t3-project-id <uuid> \
-  --cwd /path/to/checkout \
+  --t3-project <uuid> \
   --instance cursor \
   --model composer-2.5
 ```
+
+If MCP is not already inside a git work tree, tools return `need_repo` and ask which project to open (or set `COORD_PROJECT_CWD`).
 
 ## Every session
 
@@ -73,7 +73,7 @@ Leave that running. The host spawns `t3-coordinator mcp` when the supervisor nee
 
 ## First assignment (DX)
 
-From the supervisor, after defaults + bind:
+From the supervisor, after bind (and worker prefs if pushing):
 
 | Phrase | Effect |
 |---|---|

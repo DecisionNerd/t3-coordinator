@@ -1,8 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { coordinatorHome } from './bindings';
-import { readDefaults } from './defaults';
 import { readGoals } from './goals';
+import { tryResolveProjectContext } from './repoContext';
 import {
   listMilestones,
   listOpenIssues,
@@ -27,11 +27,10 @@ function summarizeIssue(i: GhIssue) {
 
 /**
  * Empty / "next" brief for the supervisor: goals + backlog snapshot + decide-what-next instructions.
- * Does not start assignments — judgment stays with the supervisor.
+ * Repo comes from the current checkout — no sticky default github repo.
  */
 export function orientNext() {
   const home = coordinatorHome();
-  const defaults = readDefaults();
   const goals = readGoals(home);
   const profilePath = path.join(home, 'operating-profile.json');
   const operatingProfile = fs.existsSync(profilePath)
@@ -47,32 +46,33 @@ export function orientNext() {
     '5) If goals are empty and the backlog is unclear, propose 1–3 goals or issues before pushing work.',
   ];
 
-  if (!defaults) {
+  const resolved = tryResolveProjectContext();
+  if (!resolved.ok) {
     return {
-      ok: true as const,
+      ok: false as const,
       kind: 'next' as const,
       mode: 'orient' as const,
+      error: 'need_repo' as const,
+      ask: resolved.ask,
+      detail: resolved.detail,
       goals: goals ?? { version: 1 as const, goals: [], notes: 'No goals.json / goals.md yet.' },
       goalsPath: {
         json: path.join(home, 'goals.json'),
         md: path.join(home, 'goals.md'),
       },
-      defaults: null,
       backlog: null,
       operatingProfile: operatingProfile
         ? { present: true, testbed: (operatingProfile as { testbed?: unknown }).testbed ?? null }
         : { present: false },
-      supervisorInstructions,
-      blockers: [
-        'Missing ~/.t3-coordinator/defaults.json — run defaults-set before execute phrases.',
+      supervisorInstructions: [
+        ...supervisorInstructions,
+        '6) You are not in a git repo — ask the operator which T3 project checkout to use (or open it), then retry.',
       ],
-      suggestedPhrases: [
-        't3-coordinator defaults-set --github owner/repo --t3-project <uuid> --cwd <path> --instance <id> --model <id>',
-        'Write goals to ~/.t3-coordinator/goals.md (one bullet per goal)',
-      ],
+      suggestedPhrases: [],
     };
   }
 
+  const ctx = resolved.context;
   let milestones: Array<{
     number: number;
     title: string;
@@ -84,9 +84,9 @@ export function orientNext() {
   let ghError: string | null = null;
 
   try {
-    const openMs = listMilestones(defaults.githubRepo, 'open').filter((m) => m.open_issues > 0);
+    const openMs = listMilestones(ctx.githubRepo, 'open').filter((m) => m.open_issues > 0);
     milestones = openMs.map((m) => {
-      const issues = listOpenIssuesInMilestone(defaults.githubRepo, m.number);
+      const issues = listOpenIssuesInMilestone(ctx.githubRepo, m.number);
       const next = [...issues].sort((a, b) => a.number - b.number)[0] ?? null;
       return {
         number: m.number,
@@ -96,7 +96,7 @@ export function orientNext() {
         suggestedNext: next ? summarizeIssue(next) : null,
       };
     });
-    openIssues = listOpenIssues(defaults.githubRepo, 40);
+    openIssues = listOpenIssues(ctx.githubRepo, 40);
   } catch (err) {
     ghError = String(err);
   }
@@ -123,10 +123,17 @@ export function orientNext() {
     suggestedPhrases.push('create issue …', 'create milestone …', 'create epic …');
   }
 
+  const assignReady = Boolean(ctx.t3ProjectId && ctx.instanceId && ctx.modelId);
+
   return {
     ok: true as const,
     kind: 'next' as const,
     mode: 'orient' as const,
+    repo: {
+      githubRepo: ctx.githubRepo,
+      projectCwd: ctx.projectCwd,
+      source: ctx.source,
+    },
     goals: goals ?? {
       version: 1 as const,
       goals: [] as { id?: string; text: string; priority?: number }[],
@@ -136,17 +143,17 @@ export function orientNext() {
       json: path.join(home, 'goals.json'),
       md: path.join(home, 'goals.md'),
     },
-    defaults: {
-      githubRepo: defaults.githubRepo,
-      t3ProjectId: defaults.t3ProjectId,
-      projectCwd: defaults.projectCwd,
-      baseBranch: defaults.baseBranch,
-      environmentId: defaults.environmentId,
-      instanceId: defaults.instanceId,
-      modelId: defaults.modelId,
+    assignPrefs: {
+      ready: assignReady,
+      t3ProjectId: ctx.t3ProjectId ?? null,
+      instanceId: ctx.instanceId ?? null,
+      modelId: ctx.modelId ?? null,
+      hint: assignReady
+        ? null
+        : 'Push/complete needs defaults-set --t3-project --instance --model (no --github; repo is this checkout).',
     },
     backlog: {
-      githubRepo: defaults.githubRepo,
+      githubRepo: ctx.githubRepo,
       milestonesWithOpenWork: milestones,
       openEpics: epics,
       openIssuesWithoutMilestone: unmilestoned,

@@ -2,18 +2,25 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { coordinatorHome } from './bindings';
 
-/** Operator defaults so `@t3-coordinator 192` does not need every assign_work field. */
+/**
+ * Optional worker / assign prefs. GitHub repo is NOT stored as a sticky default —
+ * it is detected from the current T3 project checkout (git root + remote / gh).
+ */
 export interface ProjectDefaults {
   version: 1;
-  environmentId: string;
+  environmentId?: string;
   /** T3 project id — passed as assign_work.repo */
-  t3ProjectId: string;
-  /** GitHub `owner/name` for issue/milestone lookup */
-  githubRepo: string;
-  projectCwd: string;
-  baseBranch: string;
-  instanceId: string;
-  modelId: string;
+  t3ProjectId?: string;
+  /**
+   * @deprecated Do not set a sticky default repo. Prefer the current checkout.
+   * Ignored by resolveProjectContext except as a last-resort cwd hint.
+   */
+  githubRepo?: string;
+  /** Optional cwd hint when MCP cwd is wrong; prefer COORD_PROJECT_CWD. */
+  projectCwd?: string;
+  baseBranch?: string;
+  instanceId?: string;
+  modelId?: string;
 }
 
 export function defaultsPath(home = coordinatorHome()): string {
@@ -23,8 +30,8 @@ export function defaultsPath(home = coordinatorHome()): string {
 export function readDefaults(filePath = defaultsPath()): ProjectDefaults | null {
   if (!fs.existsSync(filePath)) return null;
   const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8')) as ProjectDefaults;
-  if (parsed.version !== 1 || !parsed.t3ProjectId || !parsed.githubRepo || !parsed.projectCwd) {
-    throw new Error(`Invalid defaults file: ${filePath}`);
+  if (parsed.version !== 1) {
+    throw new Error(`Invalid defaults file (version): ${filePath}`);
   }
   return parsed;
 }
@@ -34,16 +41,27 @@ export function writeDefaults(
   filePath = defaultsPath(),
 ): ProjectDefaults {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, `${JSON.stringify(defaults, null, 2)}\n`, 'utf8');
-  return defaults;
+  // Strip empty githubRepo so we don't encourage sticky default repos
+  const cleaned: ProjectDefaults = { ...defaults, version: 1 };
+  if (!cleaned.githubRepo) delete cleaned.githubRepo;
+  fs.writeFileSync(filePath, `${JSON.stringify(cleaned, null, 2)}\n`, 'utf8');
+  return cleaned;
 }
 
-export function requireDefaults(filePath = defaultsPath()): ProjectDefaults {
-  const d = readDefaults(filePath);
-  if (!d) {
-    throw new Error(
-      `Missing ${filePath}. Set once with: t3-coordinator defaults-set --github owner/repo --t3-project <uuid> --cwd <path> --instance <id> --model <id>`,
-    );
+/** Merge patch into existing defaults (partial updates). */
+export function mergeDefaults(
+  patch: Partial<Omit<ProjectDefaults, 'version'>>,
+  filePath = defaultsPath(),
+): ProjectDefaults {
+  const current = readDefaults(filePath) ?? { version: 1 as const };
+  const next: ProjectDefaults = {
+    ...current,
+    ...patch,
+    version: 1,
+  };
+  // Explicitly clearing githubRepo
+  if ('githubRepo' in patch && !patch.githubRepo) {
+    delete next.githubRepo;
   }
-  return d;
+  return writeDefaults(next, filePath);
 }

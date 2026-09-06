@@ -7,7 +7,7 @@ import {
   type GhIssue,
   type GhMilestone,
 } from '../github/gh';
-import { requireDefaults } from './defaults';
+import { resolveProjectContext } from './repoContext';
 import { commitIssueSpec } from './specFromIssue';
 
 export type IssueCommand =
@@ -67,7 +67,7 @@ function gh(args: string[]): string {
 }
 
 function repo(): string {
-  return requireDefaults().githubRepo;
+  return resolveProjectContext().githubRepo;
 }
 
 /** Shared shape/refine/narrow/widen: preview or apply body/title. */
@@ -233,12 +233,12 @@ export function runIssueCommand(input: {
       };
     }
     if (input.commitSpec) {
-      const defaults = requireDefaults();
+      const ctx = resolveProjectContext();
       const synthetic: GhIssue = {
         ...issue,
         body: `${issue.body ?? ''}\n\n## Execution plan\n\n${input.planText}`,
       };
-      const committed = commitIssueSpec(defaults.projectCwd, synthetic);
+      const committed = commitIssueSpec(ctx.projectCwd, synthetic);
       return {
         ok: true as const,
         entity: 'issue' as const,

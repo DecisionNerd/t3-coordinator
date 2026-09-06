@@ -2,7 +2,7 @@
 
 How to talk to **@t3-coordinator** (MCP `run` phrase or typed tools). GitHub holds intent; the coordinator shapes backlog **and** runs durable handoffs.
 
-Set defaults once (`t3-coordinator defaults-set …`) and bind a supervisor thread before execute phrases.
+Set worker prefs once if you will push work (`defaults-set --t3-project … --instance … --model …`). **GitHub repo is not a sticky default** — it is detected from the current T3 project checkout (git root). If not in a repo, tools ask which project to open.
 
 ## Phrases (after @t3-coordinator)
 

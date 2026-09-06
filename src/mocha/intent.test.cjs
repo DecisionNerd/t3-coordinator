@@ -81,6 +81,22 @@ describe('parseIntent', () => {
   });
 });
 
+describe('parseGitHubOwnerRepo', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { parseGitHubOwnerRepo } = require('../../lib/domain/repoContext.js');
+
+  it('parses ssh and https remotes', () => {
+    assert.strictEqual(
+      parseGitHubOwnerRepo('git@github.com:DecisionNerd/t3-coordinator.git'),
+      'DecisionNerd/t3-coordinator',
+    );
+    assert.strictEqual(
+      parseGitHubOwnerRepo('https://github.com/DecisionNerd/t3-coordinator.git'),
+      'DecisionNerd/t3-coordinator',
+    );
+  });
+});
+
 describe('parseTaskListChildren', () => {
   it('reads checkbox children', () => {
     const kids = parseTaskListChildren('- [ ] #12\n- [x] #13\n* #14\n');
