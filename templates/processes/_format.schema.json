@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://t3-coordinator.local/schemas/process-catalog.json",
+  "title": "ProcessCatalogEntry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "consumes", "produces", "classification", "steps"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "consumes": { "type": "array", "items": { "type": "string" } },
+    "produces": { "type": "array", "items": { "type": "string" } },
+    "classification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signals", "excludes", "threshold"],
+      "properties": {
+        "signals": { "type": "array", "items": { "type": "string" } },
+        "excludes": { "type": "array", "items": { "type": "string" } },
+        "threshold": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "workerContract": { "type": "string" },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "in", "out", "timeout", "onFail"],
+        "properties": {
+          "id": { "type": "string" },
+          "process": { "type": "string" },
+          "role": { "type": "string", "enum": ["investigate", "implement", "review", "check"] },
+          "in": { "type": "array", "items": { "type": "string" } },
+          "out": { "type": "array", "items": { "type": "string" } },
+          "timeout": { "type": ["string", "number"] },
+          "dependsOn": { "type": "array", "items": { "type": "string" } },
+          "onFail": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "enum": ["retry_same", "retry_role", "block", "cancel_graph", "escalate"]
+            }
+          },
+          "maxRetrySame": { "type": "integer", "minimum": 0 },
+          "maxRetryRole": { "type": "integer", "minimum": 0 },
+          "workerContract": { "type": "string" }
+        }
+      }
+    }
+  }
+}

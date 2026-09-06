@@ -19,13 +19,17 @@ v0 is proven by three behaviors: isolated dispatch, mailbox follow-up, and durab
 | FR-6 | Given an assignment was cancelled, when the coordinator restarts and completion events arrive, then no new dispatch occurs and state remains `cancelled` | `tests/gate/cancel-stays-dead` (planned) |
 | FR-1 + FR-11 | Given Fable or Astra (or another frontier model) as supervisor, when `assign_work` is called with `supervisorThreadId` and `specSha`, then the same contract applies | Contract test on MCP schema; no model-name branch |
 | FR-4 degrade | Given T3 cannot signal thread idle, when a delivery is recorded, then the mailbox item stays queued/visible and no auto-turn is injected | Spike observation; tripwire if auto-inject is the only option |
+| FR-13 | Given a freeform dual-write/cutover goal below threshold, when `run` classifies, then `ProcessMapGap` mailbox and no closest-process start. Given `192`, ImplementSlice starts without classify | `src/mocha/process-catalog.test.ts` |
+| FR-14 + FR-15 | Given turn `error`, when wait returns, then `worker_turn_failed` + one mailbox and **no** five-minute `no_delivery` path. Same for wait timeout → `turn_timeout`. Child fail does not start dependents | `src/mocha/assignment.test.ts`, `src/mocha/process-instance.test.ts` |
+| FR-16 | Given cancel during wait, then `interruptWorker` before turn end. Given REVISE under cap, same `workerThreadId` | `src/mocha/assignment.test.ts` |
+| FR-17 | Given fresh AA cache, zero AA HTTP on dispatch. Given two runnable mapped models, implement picks max Q/C on Pareto frontier (not max Q). Review with a runnable frontier model uses that model. T3 disabled/exhausted → zero dispatch POSTs | `src/mocha/process-catalog.test.ts`, `src/mocha/model-select.test.ts`, `src/mocha/aa-onfail.test.ts` |
 
 ## Traceability contract
 
 | Link | Evidence |
 |---|---|
 | Product goal -> experience | [`../PRODUCT.md`](../PRODUCT.md) v0 success metrics |
-| Experience -> requirement | FR-1–6, FR-10–11, NFR-1–4, NFR-7 |
+| Experience -> requirement | FR-1–6, FR-10–17, NFR-1–4, NFR-7–8 |
 | Requirement -> BDD scenario | Behavior coverage table |
 | Scenario -> test | Planned paths above; gap until adapter exists |
 | Requirement -> architecture/ADR | [`ARCHITECTURE.md`](ARCHITECTURE.md), [`CONTRACTS.md`](CONTRACTS.md), ADR-0001 Proposed |

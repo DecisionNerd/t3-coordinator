@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://t3-coordinator.dev/artifacts/StepFailure.json",
+  "title": "StepFailure",
+  "type": "object",
+  "required": [
+    "kind"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "kind": {
+      "const": "StepFailure"
+    },
+    "failureClass": {
+      "type": "string"
+    },
+    "assignmentId": {
+      "type": "string"
+    },
+    "allowedNext": {
+      "type": "array"
+    }
+  }
+}

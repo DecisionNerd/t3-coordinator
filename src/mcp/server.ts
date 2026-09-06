@@ -28,6 +28,10 @@ import {
   resumeSignal,
   reviewSignal,
   statusQuery,
+  processStatusQuery,
+  processCancelSignal,
+  processPauseSignal,
+  processResumeSignal,
 } from '../workflows';
 
 function jsonResult(payload: unknown, isError = false) {
@@ -54,7 +58,7 @@ const server = new McpServer({
 
 server.tool(
   'run',
-  'Primary DX entry after @t3-coordinator. Thin supervisor: read next/sitrep/requirements, then dispatch workers — do not implement or deep-investigate in this chat. Repo = current checkout. Empty/"next" = decide. "sitrep"/"standup"/"status" = standup. Also: "192", "complete M2", "complete epic 50", plan/critique/create/close.',
+  'Primary DX entry after @t3-coordinator. Thin supervisor: classify or start; do not plan or implement. Empty/"next" = decide. Freeform goal = classify only. "start <processId>" instantiates. "192" / complete skip classify (ImplementSlice). On StepFailed pick only allowedNext (retry / block / cancel).',
   { phrase: z.string().optional().default('') },
   async ({ phrase }) => {
     try {
@@ -352,41 +356,78 @@ server.tool(
 
 server.tool(
   'get_work_status',
-  'Describe Temporal workflow status for an assignment',
+  'Describe Temporal workflow status for an assignment or process instance (includes failed steps / allowedNext)',
   { assignmentId: z.string() },
   async ({ assignmentId }) => {
     const client = await temporalClient();
-    const handle = client.workflow.getHandle(workflowIdFor(assignmentId));
-    const desc = await handle.describe();
-    let view: unknown = null;
-    try {
-      view = await handle.query(statusQuery);
-    } catch {
-      view = null;
+    const ids = assignmentId.startsWith('proc_')
+      ? [`process-${assignmentId}`, workflowIdFor(assignmentId)]
+      : [workflowIdFor(assignmentId), `process-${assignmentId}`];
+    for (const workflowId of ids) {
+      try {
+        const handle = client.workflow.getHandle(workflowId);
+        const desc = await handle.describe();
+        let view: unknown = null;
+        try {
+          view = workflowId.startsWith('process-')
+            ? await handle.query(processStatusQuery)
+            : await handle.query(statusQuery);
+        } catch {
+          view = null;
+        }
+        return jsonResult({
+          assignmentId,
+          status: desc.status.name,
+          workflowId: desc.workflowId,
+          view,
+        });
+      } catch {
+        /* try next id */
+      }
     }
-    return jsonResult({
-      assignmentId,
-      status: desc.status.name,
-      workflowId: desc.workflowId,
-      view,
-    });
+    return jsonResult({ ok: false, error: 'not_found', assignmentId }, true);
   },
 );
 
 server.tool(
   'get_delivery',
-  'Return delivery SHA / blocked reason from the assignment workflow query',
+  'Return delivery SHA / blocked reason / failed step from an assignment or process instance',
   { assignmentId: z.string() },
   async ({ assignmentId }) => {
     const client = await temporalClient();
-    const handle = client.workflow.getHandle(workflowIdFor(assignmentId));
-    const view = await handle.query(statusQuery);
-    return jsonResult({
-      assignmentId,
-      deliverySha: view.deliverySha ?? null,
-      state: view.state,
-      blockedReason: view.blockedReason ?? null,
-    });
+    const ids = assignmentId.startsWith('proc_')
+      ? [`process-${assignmentId}`, workflowIdFor(assignmentId)]
+      : [workflowIdFor(assignmentId), `process-${assignmentId}`];
+    for (const workflowId of ids) {
+      try {
+        const handle = client.workflow.getHandle(workflowId);
+        if (workflowId.startsWith('process-')) {
+          const view = await handle.query(processStatusQuery);
+          return jsonResult({
+            assignmentId,
+            workflowId,
+            deliverySha: null,
+            state: view.state,
+            blockedReason: view.failureClass ?? null,
+            failureClass: view.failureClass ?? null,
+            allowedNext: view.allowedNext ?? null,
+            stepId: view.stepId ?? null,
+          });
+        }
+        const view = await handle.query(statusQuery);
+        return jsonResult({
+          assignmentId,
+          workflowId,
+          deliverySha: view.deliverySha ?? null,
+          state: view.state,
+          blockedReason: view.blockedReason ?? null,
+          failureClass: view.failureClass ?? null,
+        });
+      } catch {
+        /* try next id */
+      }
+    }
+    return jsonResult({ ok: false, error: 'not_found', assignmentId }, true);
   },
 );
 
@@ -412,33 +453,45 @@ server.tool(
 
 server.tool(
   'pause_work',
-  'Pause mailbox auto-send for an assignment',
+  'Pause mailbox auto-send for an assignment or process instance',
   { assignmentId: z.string() },
   async ({ assignmentId }) => {
     const client = await temporalClient();
-    await client.workflow.getHandle(workflowIdFor(assignmentId)).signal(pauseSignal);
+    if (assignmentId.startsWith('proc_')) {
+      await client.workflow.getHandle(`process-${assignmentId}`).signal(processPauseSignal);
+    } else {
+      await client.workflow.getHandle(workflowIdFor(assignmentId)).signal(pauseSignal);
+    }
     return jsonResult({ ok: true });
   },
 );
 
 server.tool(
   'resume_work',
-  'Resume a paused assignment',
+  'Resume a paused assignment or process instance',
   { assignmentId: z.string() },
   async ({ assignmentId }) => {
     const client = await temporalClient();
-    await client.workflow.getHandle(workflowIdFor(assignmentId)).signal(resumeSignal);
+    if (assignmentId.startsWith('proc_')) {
+      await client.workflow.getHandle(`process-${assignmentId}`).signal(processResumeSignal);
+    } else {
+      await client.workflow.getHandle(workflowIdFor(assignmentId)).signal(resumeSignal);
+    }
     return jsonResult({ ok: true });
   },
 );
 
 server.tool(
   'cancel_work',
-  'Cancel an assignment',
+  'Cancel an assignment or process instance',
   { assignmentId: z.string() },
   async ({ assignmentId }) => {
     const client = await temporalClient();
-    await client.workflow.getHandle(workflowIdFor(assignmentId)).signal(cancelSignal);
+    if (assignmentId.startsWith('proc_')) {
+      await client.workflow.getHandle(`process-${assignmentId}`).signal(processCancelSignal);
+    } else {
+      await client.workflow.getHandle(workflowIdFor(assignmentId)).signal(cancelSignal);
+    }
     return jsonResult({ ok: true });
   },
 );

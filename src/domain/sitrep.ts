@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { coordinatorHome } from './bindings';
 import { readGoals } from './goals';
+import { listBlockedProcessInstances } from './process/status';
 import { tryResolveProjectContext } from './repoContext';
 import {
   listClosedIssues,
@@ -85,9 +86,10 @@ export function sitrep(windowDays = DEFAULT_WINDOW_DAYS) {
   const supervisorInstructions = [
     'Standup / sitrep check-in — summarize for the operator (do not auto-assign).',
     '1) Cover accomplished (recent closes/merges), blockers, and coming up.',
-    '2) Call out anything stalled or waiting on humans.',
-    '3) Propose the single next action if clear; otherwise ask the operator.',
-    '4) To execute after the sitrep, use next / a concrete phrase (192, complete M2, …).',
+    '2) Call out anything stalled or waiting on humans — including blocked/failed process instances.',
+    '3) On StepFailed, pick only allowedNext (retry / block / cancel). Do not invent a plan.',
+    '4) Propose the single next action if clear; otherwise ask the operator.',
+    '5) To execute after the sitrep, use next / a concrete phrase (192, complete M2, …).',
   ];
 
   const resolved = tryResolveProjectContext();
@@ -105,13 +107,14 @@ export function sitrep(windowDays = DEFAULT_WINDOW_DAYS) {
       blockers: {
         operatorNotes: operatorBlockers,
         issues: [] as ReturnType<typeof summarizeIssue>[],
+        processInstances: [] as ReturnType<typeof listBlockedProcessInstances>,
         setup: [resolved.ask],
       },
       comingUp: { milestones: [], epics: [], suggestedNext: [] as string[] },
       openPullRequests: [],
       supervisorInstructions: [
         ...supervisorInstructions,
-        '5) Not in a git repo — ask which T3 project to use, then retry sitrep.',
+        '6) Not in a git repo — ask which T3 project to use, then retry sitrep.',
       ],
       narrativeHints: {
         accomplished: 'No repo context.',
@@ -157,11 +160,22 @@ export function sitrep(windowDays = DEFAULT_WINDOW_DAYS) {
   }
 
   const blockedIssues = open.filter(isBlockedIssue).map(summarizeIssue);
+  const blockedProcessInstances = listBlockedProcessInstances(ctx.projectCwd).slice(0, 10);
   const epics = open.filter(looksLikeEpic).map(summarizeIssue);
   const setupBlockers: string[] = [];
   if (ghError) setupBlockers.push(`GitHub error: ${ghError}`);
 
   const suggestedNext: string[] = [];
+  for (const proc of blockedProcessInstances) {
+    const action = proc.allowedNext?.[0];
+    if (action === 'retry_same' || action === 'retry_role') {
+      suggestedNext.push(`retry ${proc.processInstanceId}`);
+    } else if (action === 'block') {
+      suggestedNext.push(`block ${proc.processInstanceId}`);
+    } else if (proc.state === 'blocked' || proc.state === 'cancelled') {
+      suggestedNext.push(`inspect process ${proc.processInstanceId} (${proc.failureClass ?? proc.state})`);
+    }
+  }
   for (const m of milestones) {
     if (m.suggestedNext) {
       suggestedNext.push(
@@ -209,9 +223,13 @@ export function sitrep(windowDays = DEFAULT_WINDOW_DAYS) {
     blockers: {
       operatorNotes: operatorBlockers,
       issues: blockedIssues,
+      processInstances: blockedProcessInstances,
       openPrsWaiting: openPrs.slice(0, 10).map(summarizePr),
       setup: setupBlockers,
       blockersPath: path.join(home, 'blockers.md'),
+    },
+    processInstances: {
+      blockedOrFailed: blockedProcessInstances,
     },
     comingUp: {
       milestones,
@@ -226,8 +244,11 @@ export function sitrep(windowDays = DEFAULT_WINDOW_DAYS) {
           ? `Closed ${accomplishedIssues.length} issue(s), merged ${accomplishedPrs.length} PR(s) in ~${days}d.`
           : `Quiet last ${days}d on closes/merges.`,
       blockers:
-        blockedIssues.length || operatorBlockers.length || openPrs.length
-          ? `${blockedIssues.length} blocked issue(s), ${operatorBlockers.length} operator note(s), ${openPrs.length} open PR(s).`
+        blockedIssues.length ||
+        operatorBlockers.length ||
+        openPrs.length ||
+        blockedProcessInstances.length
+          ? `${blockedIssues.length} blocked issue(s), ${blockedProcessInstances.length} blocked/failed process instance(s), ${operatorBlockers.length} operator note(s), ${openPrs.length} open PR(s).`
           : 'No labeled blockers detected.',
       comingUp:
         milestones.length || epics.length

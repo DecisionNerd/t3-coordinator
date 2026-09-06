@@ -8,6 +8,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import * as net from 'node:net';
 import { getSupervisorBinding } from './domain/bindings';
+import { refreshAaCatalogIfStale } from './domain/models/aaCache';
 import { runWorker } from './runWorker';
 
 const DEFAULT_ADDRESS = process.env.TEMPORAL_ADDRESS ?? 'localhost:7233';
@@ -165,9 +166,18 @@ export async function runDev(argv: string[] = process.argv): Promise<void> {
   });
 
   printOperatorBanner();
+  const aaTimer = setInterval(() => {
+    void refreshAaCatalogIfStale({}).catch((err) =>
+      console.error('[t3-coordinator] AA cache refresh failed', err),
+    );
+  }, 60 * 60 * 1000);
+  void refreshAaCatalogIfStale({}).catch((err) =>
+    console.error('[t3-coordinator] AA cache refresh failed', err),
+  );
   try {
     await runWorker({ address });
   } finally {
+    clearInterval(aaTimer);
     shutdown();
   }
 }

@@ -1,0 +1,33 @@
+{
+  "id": "FinalizeMigration",
+  "classify": false,
+  "consumes": [
+    "ReviewFinding",
+    "VerificationEvidence"
+  ],
+  "produces": [
+    "CompletionReport"
+  ],
+  "steps": [
+    {
+      "id": "finalizeMigration",
+      "process": "FinalizeMigration",
+      "role": "review",
+      "engine": "worker",
+      "in": [
+        "ReviewFinding",
+        "VerificationEvidence"
+      ],
+      "out": [
+        "CompletionReport"
+      ],
+      "timeoutMs": 600000,
+      "onFail": [
+        "retry_same",
+        "retry_role",
+        "escalate"
+      ],
+      "goalTemplate": "Write CompletionReport (merge-ready result + residual risks) for: {{goal}}\nDo not implement."
+    }
+  ]
+}

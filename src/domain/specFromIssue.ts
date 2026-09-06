@@ -127,6 +127,53 @@ export function commitIssueSpec(projectCwd: string, issue: GhIssue): {
   return { specSha, baseCommit, specPath: rel };
 }
 
+export function commitGoalSpec(projectCwd: string, goal: string, processId: string): {
+  specSha: string;
+  baseCommit: string;
+  specPath: string;
+} {
+  const baseCommit = revParseHead(projectCwd);
+  const rel = path.join('.coordinator', 'specs', `process-${processId}.md`);
+  const abs = path.join(projectCwd, rel);
+  fs.mkdirSync(path.dirname(abs), { recursive: true });
+  const body = [
+    `# Spec: process ${processId}`,
+    '',
+    '## Goal',
+    '',
+    goal.trim(),
+    '',
+    '## Coordinator notes',
+    '',
+    '- Follow catalog artifacts under `.t3/instances/`.',
+    '- Deliver with a commit containing `Coordinated-By: <assignmentId>`.',
+    '',
+  ].join('\n');
+  fs.writeFileSync(abs, body, 'utf8');
+
+  git(projectCwd, ['add', '--', rel], { withIdentity: false });
+  const dirty = spawnSync('git', ['diff', '--cached', '--quiet'], {
+    cwd: projectCwd,
+    encoding: 'utf8',
+  });
+  if (dirty.status === 0) {
+    return { specSha: baseCommit, baseCommit, specPath: rel };
+  }
+
+  const id = coordinatorGitIdentity();
+  git(projectCwd, [
+    '-c',
+    `user.name=${id.name}`,
+    '-c',
+    `user.email=${id.email}`,
+    'commit',
+    '-m',
+    `coord(spec): process ${processId}`,
+  ]);
+  const specSha = revParseHead(projectCwd);
+  return { specSha, baseCommit, specPath: rel };
+}
+
 export function buildIssueGoal(issue: GhIssue, githubRepo: string): string {
   return [
     `Implement GitHub issue #${issue.number}: ${issue.title}`,

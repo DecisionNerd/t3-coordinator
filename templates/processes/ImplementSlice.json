@@ -1,0 +1,33 @@
+{
+  "id": "ImplementSlice",
+  "classify": false,
+  "consumes": [
+    "UserGoal"
+  ],
+  "produces": [
+    "ImplementationArtifact",
+    "VerificationEvidence"
+  ],
+  "steps": [
+    {
+      "id": "implementSlice",
+      "process": "ImplementSlice",
+      "role": "implement",
+      "engine": "worker",
+      "in": [
+        "UserGoal"
+      ],
+      "out": [
+        "ImplementationArtifact",
+        "VerificationEvidence"
+      ],
+      "timeoutMs": 600000,
+      "onFail": [
+        "retry_same",
+        "retry_role",
+        "escalate"
+      ],
+      "goalTemplate": "Implement this bounded slice: {{goal}}\nCommit with the Coordinated-By trailer. Write ImplementationArtifact + VerificationEvidence."
+    }
+  ]
+}

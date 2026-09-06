@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://t3-coordinator.dev/artifacts/VerificationEvidence.json",
+  "title": "VerificationEvidence",
+  "type": "object",
+  "required": [
+    "kind"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "kind": {
+      "const": "VerificationEvidence"
+    },
+    "cells": {
+      "type": "array"
+    },
+    "overall": {
+      "enum": [
+        "pass",
+        "fail",
+        "na"
+      ]
+    }
+  }
+}

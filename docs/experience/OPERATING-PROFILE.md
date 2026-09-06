@@ -1,6 +1,6 @@
 # Customize your workflow
 
-The coordinator always does the same job: **assign → wait → delivery SHA → review wake-up → recover**. How *you* get to a good `specSha` and how you land PRs is yours to shape.
+The coordinator always does the same job: **classify or shortcut → process instance → wait → delivery SHA or `StepFailure` → review/failure wake-up → declared `onFail`**. How *you* get to a good `specSha` and how you land PRs is yours to shape. Catalog files are the editable process layer ([NFR-8](../REQUIREMENTS.md)).
 
 Out of the box we document a familiar loop (docs → challenge → issues → assign → review → merge) against a scratch repo. Swap any of that without reinstalling.
 
@@ -9,8 +9,10 @@ Out of the box we document a familiar loop (docs → challenge → issues → as
 | You edit freely | You leave alone |
 |---|---|
 | `~/.t3-coordinator/operating-profile.json` | `t3-coordinator start` / MCP tools |
+| `~/.t3-coordinator/processes/` and repo `.t3/processes/` (catalog overlay) | Shipped defaults under `templates/processes/` until you copy them |
+| `~/.t3-coordinator/models/t3-to-aa.json` (T3 slug → AA `id`) | AA cache file (coordinator-owned) |
 | Issue templates, supervisor prompts, repo docs | Installed app under `~/.t3-coordinator/app` |
-| Which git repo is the T3 project | Delivery trailer + review verdicts |
+| Which git repo is the T3 project | Delivery trailer + review verdicts + `onFail` closed set |
 
 Ask your coding agent to update those files when the loop should change. You should not need a new coordinator release to drop RedTeam, point at GraphForge, or rename beats.
 

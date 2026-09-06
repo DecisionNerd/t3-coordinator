@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://t3-coordinator.dev/artifacts/ProcessSelection.json",
+  "title": "ProcessSelection",
+  "type": "object",
+  "required": [
+    "kind"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "kind": {
+      "const": "ProcessSelection"
+    },
+    "goal": {
+      "type": "string"
+    },
+    "selected": {}
+  }
+}

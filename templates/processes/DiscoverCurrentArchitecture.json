@@ -1,0 +1,31 @@
+{
+  "id": "DiscoverCurrentArchitecture",
+  "classify": false,
+  "consumes": [
+    "UserGoal"
+  ],
+  "produces": [
+    "CurrentArchitecture"
+  ],
+  "steps": [
+    {
+      "id": "discoverCurrentArchitecture",
+      "process": "DiscoverCurrentArchitecture",
+      "role": "investigate",
+      "engine": "worker",
+      "in": [
+        "UserGoal"
+      ],
+      "out": [
+        "CurrentArchitecture"
+      ],
+      "timeoutMs": 600000,
+      "onFail": [
+        "retry_same",
+        "retry_role",
+        "escalate"
+      ],
+      "goalTemplate": "Map current language/runtime ownership in this repo for: {{goal}}\nWrite CurrentArchitecture (surfaces, owners, files). Do not propose a target or plan."
+    }
+  ]
+}

@@ -16,6 +16,15 @@ Authenticated HTTP (`packages/contracts/src/environmentHttp.ts`):
 
 WebSocket RPC (`ORCHESTRATION_WS_METHODS`): `orchestration.dispatchCommand`, `subscribeThread`, `subscribeShell`, `getTurnDiff`, `getFullThreadDiff`, `searchThreads`. Dispatch over HTTP is enough to start work; **completion** needs `subscribeThread` or polling the thread snapshot. Command ack is not turn-complete.
 
+**Provider config is not an orchestration HTTP route.** Live inventory is a separate WS RPC (same objects the T3 UI uses):
+
+| RPC | Scope | Use |
+|---|---|---|
+| `server.getConfig` | `orchestration:read` | `providers[]` — status, auth, models, `usageLimits` |
+| `server.refreshProviders` | `orchestration:read` | UI “Refresh provider status”; when `checkedAt` stale or `usageLimits.unavailable.reason=probeFailed` |
+
+Do **not** read provider config from `/api/orchestration/*`. Do not open agent sessions (`refreshModels` only on explicit operator refresh). Dispatch gates use `usageLimits` windows (`usedPercent` / `resetsAt`) — Usage → Limits — not cost-history `getUsageSummary`. See [`MODEL-SELECTION.md`](MODEL-SELECTION.md).
+
 Auth: environment pairing issues scoped sessions (`orchestration:read`, `orchestration:operate`, …). A coordinator credential should have operate+read, not `access:write`. Pairing secrets are shown once. Relay/Connect tokens are a different trust boundary.
 
 ## Commands we will use
@@ -61,6 +70,23 @@ Otherwise it is **idle** enough to dispatch one follow-up `thread.turn.start` wi
 
 There is **no** cross-thread “when worker completes, wake supervisor” primitive. That is our mailbox + subscribe/poll.
 
+Turn-end states (`latestTurn.state`): `running` \| `interrupted` \| `completed` \| `error`. Coordinator git grace (FR-3) applies **only** after `completed`. `error` / `interrupted` and wait timeout are `worker_turn_failed` / `turn_timeout` — not `no_delivery`. Cancel while waiting must call `thread.turn.interrupt` **immediately**, not after the turn ends.
+
+## Provider inventory (runnable gate)
+
+`SelectWorkerModel` reads T3 `ServerProvider` rows from `server.getConfig`. Rankings come from Artificial Analysis ([`MODEL-SELECTION.md`](MODEL-SELECTION.md)); T3 only **gates**.
+
+**Runnable** means all of:
+
+1. Instance exists in `providers[]` (route by `instanceId`, not driver — two Cursor accounts are different instances).
+2. `enabled` and `installed`; `availability` is not `unavailable`.
+3. `status` is `ready` or `warning` (`error` / `disabled` are not).
+4. `auth.status === "authenticated"`.
+5. T3 `model` slug/alias is on **that** instance’s live `models[]`.
+6. Usage remaining when the driver reports windows: skip if `usageLimits` absent or `unsupported`; `probeFailed` → one `server.refreshProviders` then `usage_unknown`; else every window `usedPercent` **below** `usageMaxPercent` (default 100).
+
+Highest AA coding index still **must not dispatch** if T3 shows that instance exhausted or disabled. Fail closed: `provider_unavailable`, `model_missing`, `usage_exhausted`, `usage_unknown`.
+
 ## MCP: do not use T3’s `/mcp`
 
 T3 injects a **`t3-code` HTTP MCP** into provider sessions for **its own** tools (preview / agent browser). Credentials are minted per thread; `/mcp` accepts only those bearers (`ProviderService.prepareMcpSession`). Withholding the credential disables that toolkit. This is not a plugin slot for t3-coordinator.
@@ -83,11 +109,12 @@ OpenCode’s extra MCP adds are **directory-scoped**; T3’s connection is **thr
 | `commandId` / `workerThreadId` | Client-supplied; T3 receipts |
 | `supervisorThreadId` | T3 `ThreadId` |
 | Dispatch | `POST /api/orchestration/dispatch` |
+| Provider inventory | WS RPC `server.getConfig` / `server.refreshProviders` — **not** `/api/orchestration/*` |
 | Worker isolation | `bootstrap.prepareWorktree` + `worktreePath` |
-| Turn finished | session/latestTurn left `running` |
+| Turn finished | session/latestTurn left `running` (`completed` vs `error`/`interrupted` branched before git grace) |
 | Delivery | Our spec/commit SHA, not T3 checkpoints |
 | Follow-up | Another `thread.turn.start` on the supervisor thread when idle |
-| Cancel | `thread.turn.interrupt` then optional session stop |
+| Cancel | `thread.turn.interrupt` **while waiting**, then optional session stop |
 
 ## Version pin (spike baseline)
 
@@ -112,5 +139,6 @@ Auth: `npx t3 auth session issue` → `~/.t3-coordinator/credentials.json` (`npm
 
 - Dedicated operate+read-only session (current spike token includes `access:write`)
 - WS subscribe vs HTTP poll for turn-end behind Connect
+- `server.getConfig` / `server.refreshProviders` live receipts on OVHC 0.0.38 (pinned as WS RPC; not `/api/orchestration/*`)
 - Supervisor provider MCP loading without worker inheritance
 - Full mailbox → `submit_review` loop with a frontier supervisor thread

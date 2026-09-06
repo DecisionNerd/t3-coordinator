@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "attribution": "https://artificialanalysis.ai/",
+  "models": [
+    {
+      "t3Model": "composer-2",
+      "aaId": "cursor-composer-2",
+      "class": "worker"
+    },
+    {
+      "t3Model": "composer",
+      "aaId": "cursor-composer",
+      "class": "worker"
+    },
+    {
+      "t3Model": "glm-4.6",
+      "aaId": "zhipu-glm-4.6",
+      "class": "worker"
+    },
+    {
+      "t3Model": "glm",
+      "aaId": "zhipu-glm-4.6",
+      "class": "worker"
+    },
+    {
+      "t3Model": "fable-1",
+      "aaId": "spacexai-fable-1",
+      "class": "frontier"
+    },
+    {
+      "t3Model": "fable",
+      "aaId": "spacexai-fable-1",
+      "class": "frontier"
+    },
+    {
+      "t3Model": "astra",
+      "aaId": "spacexai-astra",
+      "class": "frontier"
+    },
+    {
+      "t3Model": "gpt-5.4",
+      "aaId": "openai-gpt-5.4",
+      "class": "frontier"
+    },
+    {
+      "t3Model": "claude-opus-4-6",
+      "aaId": "anthropic-claude-opus-4-6",
+      "class": "frontier"
+    }
+  ]
+}

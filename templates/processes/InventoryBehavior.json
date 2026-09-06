@@ -1,0 +1,33 @@
+{
+  "id": "InventoryBehavior",
+  "classify": false,
+  "consumes": [
+    "UserGoal",
+    "CurrentArchitecture"
+  ],
+  "produces": [
+    "BehaviorInventory"
+  ],
+  "steps": [
+    {
+      "id": "inventoryBehavior",
+      "process": "InventoryBehavior",
+      "role": "investigate",
+      "engine": "worker",
+      "in": [
+        "UserGoal",
+        "CurrentArchitecture"
+      ],
+      "out": [
+        "BehaviorInventory"
+      ],
+      "timeoutMs": 600000,
+      "onFail": [
+        "retry_same",
+        "retry_role",
+        "escalate"
+      ],
+      "goalTemplate": "Inventory observable capabilities for: {{goal}}\nLink each capability to tests, docs, and public APIs where they exist. Do not infer intended behavior solely from implementation when tests/docs/public APIs disagree. Output BehaviorInventory."
+    }
+  ]
+}

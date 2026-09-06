@@ -1,0 +1,35 @@
+{
+  "id": "DefineTargetArchitecture",
+  "classify": false,
+  "consumes": [
+    "UserGoal",
+    "CurrentArchitecture"
+  ],
+  "produces": [
+    "TargetArchitecture",
+    "ConstraintSet"
+  ],
+  "steps": [
+    {
+      "id": "defineTargetArchitecture",
+      "process": "DefineTargetArchitecture",
+      "role": "investigate",
+      "engine": "worker",
+      "in": [
+        "UserGoal",
+        "CurrentArchitecture"
+      ],
+      "out": [
+        "TargetArchitecture",
+        "ConstraintSet"
+      ],
+      "timeoutMs": 600000,
+      "onFail": [
+        "retry_same",
+        "retry_role",
+        "escalate"
+      ],
+      "goalTemplate": "Define machine-checkable ownership rules for: {{goal}}\nRust must own domain/algorithms/validation/transformations/data-model semantics. Python/Node/WASM may wrap (conversion, ergonomics, exception translation) and must not duplicate domain decisions. Emit TargetArchitecture + ConstraintSet with file-checkable must_not_own rules, not prose."
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "requireRanking": true,
+  "minCodingIndex": 15,
+  "minIntelligenceIndex": 15,
+  "minReviewIntelligenceIndex": 50,
+  "usageMaxPercent": {
+    "implement": 90,
+    "investigate": 90,
+    "review": 100,
+    "check": 100
+  },
+  "aaCacheTtlMs": 3600000,
+  "engineCaps": {
+    "implement": { "maxRetrySame": 1, "maxRetryRole": 1 },
+    "investigate": { "maxRetrySame": 1, "maxRetryRole": 1 },
+    "review": { "maxRetrySame": 0, "maxRetryRole": 1 },
+    "check": { "maxRetrySame": 0, "maxRetryRole": 0 }
+  },
+  "reviseMaxAttempts": 2
+}

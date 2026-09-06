@@ -1,0 +1,35 @@
+{
+  "id": "GapAnalysis",
+  "classify": false,
+  "consumes": [
+    "CurrentArchitecture",
+    "TargetArchitecture",
+    "BehaviorInventory"
+  ],
+  "produces": [
+    "GapSet"
+  ],
+  "steps": [
+    {
+      "id": "gapAnalysis",
+      "process": "GapAnalysis",
+      "role": "investigate",
+      "engine": "worker",
+      "in": [
+        "CurrentArchitecture",
+        "TargetArchitecture",
+        "BehaviorInventory"
+      ],
+      "out": [
+        "GapSet"
+      ],
+      "timeoutMs": 600000,
+      "onFail": [
+        "retry_same",
+        "retry_role",
+        "escalate"
+      ],
+      "goalTemplate": "Produce typed gaps (current vs target vs inventory) with dependencies and validation criteria. Do not start implementation."
+    }
+  ]
+}

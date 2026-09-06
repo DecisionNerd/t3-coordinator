@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://t3-coordinator.dev/artifacts/GapSet.json",
+  "title": "GapSet",
+  "type": "object",
+  "required": [
+    "kind"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "kind": {
+      "const": "GapSet"
+    },
+    "gaps": {
+      "type": "array"
+    }
+  }
+}

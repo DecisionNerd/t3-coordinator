@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { coordinatorHome } from './bindings';
 import { readGoals } from './goals';
 import { tryResolveProjectContext } from './repoContext';
+import { listBlockedProcessInstances } from './process/status';
 import {
   listMilestones,
   listOpenIssues,
@@ -38,14 +39,15 @@ export function orientNext() {
     : null;
 
   const supervisorInstructions = [
-    'Thin supervisor: almost no tool use beyond reading requirements / next / sitrep, then assign and review.',
-    'Implementation and investigations belong in worker sub-agents (complete / push_issue / assign_work) — do not dig the repo or implement in this chat.',
+    'Thin supervisor: classify or start; do not plan; do not implement. On StepFailed pick only allowedNext.',
+    'Implementation and investigations belong in worker sub-agents (complete / push_issue / start <processId>) — do not dig the repo or implement in this chat.',
     'The operator invoked t3-coordinator with no specific command.',
-    '1) Review goals (if any) against the live backlog below.',
-    '2) Decide the single best next action in this repo (shape backlog, push one issue, complete a milestone/epic, or ask the operator).',
+    '1) Review goals (if any) against the live backlog below, including blocked/failed process instances.',
+    '2) Decide the single best next action in this repo (shape backlog, push one issue, complete a milestone/epic, start a catalog process, or ask the operator).',
     '3) Prefer one critical-path item — do not spawn parallel workers.',
-    '4) Execute with a concrete phrase/tool: "192", "complete M2", "complete epic 50", plan/critique/refine, or create/close with apply:true when mutating.',
-    '5) If goals are empty and the backlog is unclear, propose 1–3 goals or issues before pushing work.',
+    '4) Execute with a concrete phrase/tool: "192", "complete M2", "complete epic 50", "start CrossLanguageLogicMigration", plan/critique/refine, or create/close with apply:true when mutating.',
+    '5) Freeform goals classify only. Do not invent a plan. Start a process only after classify.',
+    '6) If goals are empty and the backlog is unclear, propose 1–3 goals or issues before pushing work.',
   ];
 
   const resolved = tryResolveProjectContext();
@@ -161,6 +163,9 @@ export function orientNext() {
       openIssuesWithoutMilestone: unmilestoned,
       openIssueSampleCount: openIssues.length,
       ghError,
+    },
+    processInstances: {
+      blockedOrFailed: listBlockedProcessInstances(ctx.projectCwd).slice(0, 10),
     },
     operatingProfile: operatingProfile
       ? { present: true, testbed: (operatingProfile as { testbed?: unknown }).testbed ?? null }

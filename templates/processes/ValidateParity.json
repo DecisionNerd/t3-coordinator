@@ -1,0 +1,31 @@
+{
+  "id": "ValidateParity",
+  "classify": false,
+  "consumes": [
+    "ImplementationArtifact",
+    "BehaviorInventory"
+  ],
+  "produces": [
+    "VerificationEvidence"
+  ],
+  "steps": [
+    {
+      "id": "validateParity",
+      "process": "ValidateParity",
+      "role": "check",
+      "engine": "worker",
+      "in": [
+        "ImplementationArtifact",
+        "BehaviorInventory"
+      ],
+      "out": [
+        "VerificationEvidence"
+      ],
+      "timeoutMs": 600000,
+      "onFail": [
+        "escalate"
+      ],
+      "goalTemplate": "Fill a parity matrix (Rust/Python/Node/WASM or applicable surfaces). Cells MUST be pass, fail, or na. na requires a written exception on the evidence object; silent omit is invalid. Overall fail if any required cell is fail."
+    }
+  ]
+}

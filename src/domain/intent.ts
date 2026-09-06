@@ -40,7 +40,14 @@ export type ParsedIntent =
       epicNumber?: number;
       rest?: string;
     }
-  | { kind: 'unknown'; raw: string };
+  | { kind: 'unknown'; raw: string }
+  | { kind: 'classify'; goal: string }
+  | { kind: 'start_process'; processId: string }
+  | {
+      kind: 'process_recover';
+      action: 'retry_same' | 'retry_role' | 'block' | 'cancel_graph';
+      processInstanceId?: string;
+    };
 
 const ADMIN =
   'status|plan|critique|review|refine|update|narrow|widen|explain|close|reopen|create|list|push|complete';
@@ -171,5 +178,26 @@ export function parseIntent(raw: string): ParsedIntent {
     return { kind: 'milestone_admin', command: 'status', milestone: msOnly[1].trim() };
   }
 
-  return { kind: 'unknown', raw: text };
+  const startProc = text.match(/^start\s+([A-Za-z][A-Za-z0-9_-]*)\s*$/);
+  if (startProc) {
+    return { kind: 'start_process', processId: startProc[1]! };
+  }
+
+  const recover = text.match(
+    /^(retry(?:[\s_]+same)?|retry[\s_]+role|block|cancel)(?:\s+([A-Za-z0-9_-]+))?\s*$/i,
+  );
+  if (recover) {
+    const verb = recover[1]!.toLowerCase().replace(/\s+/g, '_');
+    const action =
+      verb === 'retry_role'
+        ? ('retry_role' as const)
+        : verb === 'block'
+          ? ('block' as const)
+          : verb === 'cancel'
+            ? ('cancel_graph' as const)
+            : ('retry_same' as const);
+    return { kind: 'process_recover', action, processInstanceId: recover[2] };
+  }
+
+  return { kind: 'classify', goal: text };
 }

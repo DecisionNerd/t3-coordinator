@@ -1,6 +1,7 @@
 import { Connection, Client } from '@temporalio/client';
 import { loadClientConnectConfig } from '@temporalio/envconfig';
-import { resolveAssignWork } from '../activities';
+import { nanoid } from 'nanoid';
+import { resolveAssignWork, sendSupervisorFollowUp } from '../activities';
 import { TASK_QUEUE } from './contracts';
 import type { ProjectDefaults } from './defaults';
 import { parseIntent } from './intent';
@@ -11,9 +12,14 @@ import { sitrep } from './sitrep';
 import {
   needRepoResult,
   requireAssignContext,
+  tryResolveProjectContext,
   type ProjectContext,
 } from './repoContext';
-import { assignmentWorkflow } from '../workflows';
+import {
+  processCancelSignal,
+  processInstanceWorkflow,
+  processRecoverSignal,
+} from '../workflows';
 import {
   getIssue,
   listOpenIssuesInMilestone,
@@ -21,10 +27,154 @@ import {
   type GhIssue,
   type GhMilestone,
 } from '../github/gh';
-import { buildIssueGoal, commitIssueSpec } from './specFromIssue';
+import { buildIssueGoal, commitGoalSpec, commitIssueSpec } from './specFromIssue';
+import { classifyGoal } from './process/classify';
+import { getProcess, loadProcessCatalog } from './process/catalog';
+import { writeArtifact, readArtifact } from './process/artifacts';
+import { readCurrentInstanceId } from './process/status';
+import type { OnFailAction, ProcessSelection } from './process/types';
 
-function workflowIdFor(assignmentId: string): string {
-  return `assignment-${assignmentId}`;
+function processWorkflowId(processInstanceId: string): string {
+  return `process-${processInstanceId}`;
+}
+
+export async function classifyFreeformGoal(goal: string, defaults?: ProjectDefaults) {
+  const resolved = tryResolveProjectContext({ defaults });
+  const projectCwd = resolved.ok ? resolved.context.projectCwd : process.cwd();
+  const catalog = loadProcessCatalog(projectCwd);
+  const result = classifyGoal(goal, catalog);
+  writeArtifact(projectCwd, 'pending', 'UserGoal', { kind: 'UserGoal', text: goal });
+  writeArtifact(projectCwd, 'pending', result.kind, result);
+
+  if (result.kind === 'ProcessMapGap') {
+    let mailbox: { mailboxId?: string; sent?: boolean } | null = null;
+    try {
+      const ctx = requireAssignContext({ defaults });
+      const binding = await resolveAssignWork({
+        repo: ctx.t3ProjectId,
+        specSha: 'classify',
+        baseCommit: 'classify',
+        environmentId: ctx.environmentId,
+        instanceId: ctx.instanceId,
+        modelId: ctx.modelId,
+        goal,
+      });
+      if (binding.ok) {
+        const assignmentId = `classify_${nanoid(8)}`;
+        mailbox = await sendSupervisorFollowUp({
+          assignmentId,
+          supervisorThreadId: binding.supervisorThreadId,
+          failure: {
+            kind: 'StepFailure',
+            assignmentId,
+            failureClass: 'process_map_gap',
+            attempted: 1,
+            allowedNext: ['escalate'],
+            evidence: result.message,
+          },
+        });
+      }
+    } catch {
+      mailbox = null;
+    }
+    return {
+      ok: false as const,
+      kind: 'process_map_gap' as const,
+      result,
+      mailbox,
+      hint: 'Do not pick the closest process. This is a process-map gap. Extend the catalog, then classify again.',
+    };
+  }
+
+  return {
+    ok: true as const,
+    kind: 'process_selection' as const,
+    result,
+    next: `start ${result.selected}`,
+    hint: 'Classification is complete. Do not plan or start workers until you run start <processId>.',
+  };
+}
+
+export async function startCatalogProcess(input: {
+  processId: string;
+  goal?: string;
+  defaults?: ProjectDefaults;
+  selection?: ProcessSelection;
+}) {
+  const ctx = requireAssignContext({ defaults: input.defaults });
+  getProcess(input.processId, ctx.projectCwd);
+  const pending = readArtifact<{ text?: string }>(ctx.projectCwd, 'pending', 'UserGoal');
+  const goal = input.goal ?? pending?.text;
+  if (!goal) {
+    return {
+      ok: false as const,
+      error: 'missing_goal',
+      hint: 'Classify a freeform goal first, then start <processId>.',
+    };
+  }
+  const { specSha, baseCommit } = commitGoalSpec(ctx.projectCwd, goal, input.processId);
+  const processInstanceId = `proc_${nanoid(10)}`;
+  const binding = await resolveAssignWork({
+    repo: ctx.t3ProjectId,
+    specSha,
+    baseCommit,
+    environmentId: ctx.environmentId,
+    instanceId: ctx.instanceId,
+    modelId: ctx.modelId,
+    goal,
+  });
+  const supervisorThreadId = binding.ok ? binding.supervisorThreadId : undefined;
+  const client = await temporalClient();
+  const handle = await client.workflow.start(processInstanceWorkflow, {
+    taskQueue: TASK_QUEUE,
+    workflowId: processWorkflowId(processInstanceId),
+    args: [
+      {
+        processId: input.processId,
+        processInstanceId,
+        goal,
+        projectCwd: ctx.projectCwd,
+        baseBranch: ctx.baseBranch,
+        repo: ctx.t3ProjectId,
+        specSha,
+        baseCommit,
+        environmentId: ctx.environmentId,
+        instanceId: ctx.instanceId,
+        modelId: ctx.modelId,
+        selection: input.selection,
+        supervisorThreadId,
+      },
+    ],
+  });
+  return {
+    ok: true as const,
+    processId: input.processId,
+    processInstanceId,
+    workflowId: handle.workflowId,
+    goal,
+    specSha,
+    hint: 'Process instance started. Supervisor: do not plan or implement; wait for mailbox or get_work_status.',
+  };
+}
+
+export async function recoverProcessInstance(input: {
+  action: OnFailAction;
+  processInstanceId?: string;
+  defaults?: ProjectDefaults;
+}) {
+  const ctx = requireAssignContext({ defaults: input.defaults });
+  const processInstanceId = input.processInstanceId ?? readCurrentInstanceId(ctx.projectCwd);
+  if (!processInstanceId) {
+    return { ok: false as const, error: 'no_process_instance' };
+  }
+  const client = await temporalClient();
+  const handle = client.workflow.getHandle(processWorkflowId(processInstanceId));
+  if (input.action === 'cancel_graph') {
+    await handle.signal(processCancelSignal);
+  } else {
+    await handle.signal(processRecoverSignal, { action: input.action });
+  }
+  return { ok: true as const, processInstanceId, action: input.action };
 }
 
 async function temporalClient(): Promise<Client> {
@@ -50,6 +200,8 @@ export async function startAssignmentForIssue(input: {
       specSha: string;
       baseCommit: string;
       specPath: string;
+      processId: 'ImplementSlice';
+      processInstanceId: string;
     }
   | { ok: false; error: 'supervisor_unbound'; ask: string }
 > {
@@ -71,14 +223,24 @@ export async function startAssignmentForIssue(input: {
   if (!resolved.ok) {
     return { ok: false, error: resolved.error, ask: resolved.ask };
   }
+  const processInstanceId = `proc_${nanoid(10)}`;
   const client = await temporalClient();
-  const handle = await client.workflow.start(assignmentWorkflow, {
+  const handle = await client.workflow.start(processInstanceWorkflow, {
     taskQueue: TASK_QUEUE,
-    workflowId: workflowIdFor(resolved.assignmentId),
+    workflowId: processWorkflowId(processInstanceId),
     args: [
       {
-        ...assign,
-        assignmentId: resolved.assignmentId,
+        processId: 'ImplementSlice',
+        processInstanceId,
+        goal,
+        projectCwd: ctx.projectCwd,
+        baseBranch: ctx.baseBranch,
+        repo: ctx.t3ProjectId,
+        specSha,
+        baseCommit,
+        environmentId: ctx.environmentId,
+        instanceId: ctx.instanceId,
+        modelId: ctx.modelId,
         supervisorThreadId: resolved.supervisorThreadId,
       },
     ],
@@ -92,13 +254,15 @@ export async function startAssignmentForIssue(input: {
       title: input.issue.title,
       url: input.issue.url,
     },
-    assignmentId: resolved.assignmentId,
+    assignmentId: processInstanceId,
     workflowId: handle.workflowId,
     supervisorThreadId: resolved.supervisorThreadId,
     mailboxSource: resolved.mailboxSource,
     specSha,
     baseCommit,
     specPath,
+    processId: 'ImplementSlice',
+    processInstanceId,
   };
 }
 
@@ -238,6 +402,21 @@ export async function runDxIntent(raw: string) {
     if (intent.kind === 'complete_epic') {
       return { intent, result: await completeEpic(intent.epicNumber) };
     }
+    if (intent.kind === 'classify') {
+      return { intent, result: await classifyFreeformGoal(intent.goal) };
+    }
+    if (intent.kind === 'start_process') {
+      return { intent, result: await startCatalogProcess({ processId: intent.processId }) };
+    }
+    if (intent.kind === 'process_recover') {
+      return {
+        intent,
+        result: await recoverProcessInstance({
+          action: intent.action,
+          processInstanceId: intent.processInstanceId,
+        }),
+      };
+    }
     if (intent.kind === 'issue_admin') {
       if (intent.command === 'push' && intent.issueNumber != null) {
         return { intent, result: await pushIssue(intent.issueNumber) };
@@ -364,7 +543,9 @@ export async function runDxIntent(raw: string) {
       hint: [
         'Empty / next: review goals + backlog, decide next action',
         'Sitrep / standup / status: accomplished, blockers, coming up',
-        'Execute: "192" | "complete M2" | "complete epic 50"',
+        'Freeform goal: classify only — then "start <processId>"',
+        'Failure: "retry" | "retry role" | "block" | "cancel"',
+        'Execute: "192" | "complete M2" | "complete epic 50" (ImplementSlice, skip classify)',
         'Issue lifecycle: status|plan|critique|refine|update|narrow|widen|explain|close|reopen|create + #N',
         'Milestone lifecycle: status|plan|critique|refine|update|narrow|widen|explain|close|list|create + M2',
         'Epic lifecycle: "epic 50" | "status epic 50" | "create epic …" | "complete epic 50"',

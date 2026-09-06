@@ -1,0 +1,33 @@
+{
+  "id": "DesignExecutionGraph",
+  "classify": false,
+  "consumes": [
+    "GapSet",
+    "ConstraintSet"
+  ],
+  "produces": [
+    "ExecutionGraph"
+  ],
+  "steps": [
+    {
+      "id": "designExecutionGraph",
+      "process": "DesignExecutionGraph",
+      "role": "investigate",
+      "engine": "worker",
+      "in": [
+        "GapSet",
+        "ConstraintSet"
+      ],
+      "out": [
+        "ExecutionGraph"
+      ],
+      "timeoutMs": 600000,
+      "onFail": [
+        "retry_same",
+        "retry_role",
+        "escalate"
+      ],
+      "goalTemplate": "First planning step: emit an executable ExecutionGraph of slices with ordering. Do not implement slices."
+    }
+  ]
+}

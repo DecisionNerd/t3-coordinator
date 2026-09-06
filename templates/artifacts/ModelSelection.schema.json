@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://t3-coordinator.dev/artifacts/ModelSelection.json",
+  "title": "ModelSelection",
+  "type": "object",
+  "required": [
+    "kind"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "kind": {
+      "const": "ModelSelection"
+    },
+    "instanceId": {
+      "type": "string"
+    },
+    "modelId": {
+      "type": "string"
+    },
+    "attribution": {
+      "type": "string"
+    }
+  }
+}

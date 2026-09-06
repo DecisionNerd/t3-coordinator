@@ -23,6 +23,11 @@ export type BlockedReason =
   | 'supervisor_blocked'
   | 'no_delivery'
   | 'delivery_unbound'
+  | 'dispatch_failed'
+  | 'turn_timeout'
+  | 'worker_turn_failed'
+  | 'stale_review'
+  | 'cancelled'
   | string;
 
 export interface AssignWorkInput {
@@ -36,6 +41,13 @@ export interface AssignWorkInput {
   modelId: string;
   goal: string;
   assignmentId?: string;
+  role?: 'investigate' | 'implement' | 'review' | 'check';
+  workerThreadId?: string;
+  processInstanceId?: string;
+  stepId?: string;
+  attempt?: number;
+  timeoutMs?: number;
+  maxRevise?: number;
 }
 
 export interface SupervisorBinding {

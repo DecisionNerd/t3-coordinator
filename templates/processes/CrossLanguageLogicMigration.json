@@ -1,0 +1,235 @@
+{
+  "id": "CrossLanguageLogicMigration",
+  "classify": true,
+  "consumes": [
+    "UserGoal"
+  ],
+  "produces": [
+    "CompletionReport"
+  ],
+  "classification": {
+    "signals": [
+      "python",
+      "rust",
+      "parity",
+      "wasm",
+      "wrapper"
+    ],
+    "excludes": [
+      "dual-write",
+      "dual write",
+      "cutover",
+      "strangler"
+    ],
+    "threshold": 0.6
+  },
+  "steps": [
+    {
+      "id": "discover",
+      "process": "DiscoverCurrentArchitecture",
+      "role": "investigate",
+      "in": [
+        "UserGoal"
+      ],
+      "out": [
+        "CurrentArchitecture"
+      ],
+      "timeoutMs": 600000,
+      "onFail": [
+        "retry_same",
+        "retry_role",
+        "escalate"
+      ]
+    },
+    {
+      "id": "define-target",
+      "process": "DefineTargetArchitecture",
+      "role": "investigate",
+      "dependsOn": [
+        "discover"
+      ],
+      "in": [
+        "UserGoal",
+        "CurrentArchitecture"
+      ],
+      "out": [
+        "TargetArchitecture",
+        "ConstraintSet"
+      ],
+      "timeoutMs": 600000,
+      "onFail": [
+        "retry_same",
+        "retry_role",
+        "escalate"
+      ]
+    },
+    {
+      "id": "inventory",
+      "process": "InventoryBehavior",
+      "role": "investigate",
+      "dependsOn": [
+        "discover"
+      ],
+      "in": [
+        "UserGoal",
+        "CurrentArchitecture"
+      ],
+      "out": [
+        "BehaviorInventory"
+      ],
+      "timeoutMs": 600000,
+      "onFail": [
+        "retry_same",
+        "retry_role",
+        "escalate"
+      ]
+    },
+    {
+      "id": "gaps",
+      "process": "GapAnalysis",
+      "role": "investigate",
+      "dependsOn": [
+        "define-target",
+        "inventory"
+      ],
+      "in": [
+        "CurrentArchitecture",
+        "TargetArchitecture",
+        "BehaviorInventory"
+      ],
+      "out": [
+        "GapSet"
+      ],
+      "timeoutMs": 600000,
+      "onFail": [
+        "retry_same",
+        "retry_role",
+        "escalate"
+      ]
+    },
+    {
+      "id": "design-graph",
+      "process": "DesignExecutionGraph",
+      "role": "investigate",
+      "dependsOn": [
+        "gaps"
+      ],
+      "in": [
+        "GapSet",
+        "ConstraintSet"
+      ],
+      "out": [
+        "ExecutionGraph"
+      ],
+      "timeoutMs": 600000,
+      "onFail": [
+        "retry_same",
+        "retry_role",
+        "escalate"
+      ]
+    },
+    {
+      "id": "implement-slices",
+      "process": "ImplementSlices",
+      "role": "implement",
+      "dependsOn": [
+        "design-graph"
+      ],
+      "in": [
+        "ExecutionGraph",
+        "ConstraintSet"
+      ],
+      "out": [
+        "ImplementationArtifact",
+        "VerificationEvidence"
+      ],
+      "timeoutMs": 600000,
+      "onFail": [
+        "retry_same",
+        "retry_role",
+        "escalate"
+      ]
+    },
+    {
+      "id": "validate-parity",
+      "process": "ValidateParity",
+      "role": "check",
+      "dependsOn": [
+        "implement-slices"
+      ],
+      "in": [
+        "ImplementationArtifact",
+        "BehaviorInventory"
+      ],
+      "out": [
+        "VerificationEvidence"
+      ],
+      "timeoutMs": 600000,
+      "onFail": [
+        "escalate"
+      ]
+    },
+    {
+      "id": "validate-architecture",
+      "process": "ValidateArchitecturalConstraint",
+      "role": "check",
+      "dependsOn": [
+        "implement-slices"
+      ],
+      "in": [
+        "ImplementationArtifact",
+        "ConstraintSet"
+      ],
+      "out": [
+        "VerificationEvidence"
+      ],
+      "timeoutMs": 600000,
+      "onFail": [
+        "escalate"
+      ]
+    },
+    {
+      "id": "integration-review",
+      "process": "IntegrationReview",
+      "role": "review",
+      "dependsOn": [
+        "validate-parity",
+        "validate-architecture"
+      ],
+      "in": [
+        "ImplementationArtifact",
+        "VerificationEvidence"
+      ],
+      "out": [
+        "ReviewFinding"
+      ],
+      "timeoutMs": 600000,
+      "onFail": [
+        "retry_same",
+        "retry_role",
+        "escalate"
+      ]
+    },
+    {
+      "id": "finalize",
+      "process": "FinalizeMigration",
+      "role": "review",
+      "dependsOn": [
+        "integration-review"
+      ],
+      "in": [
+        "ReviewFinding",
+        "VerificationEvidence"
+      ],
+      "out": [
+        "CompletionReport"
+      ],
+      "timeoutMs": 600000,
+      "onFail": [
+        "retry_same",
+        "retry_role",
+        "escalate"
+      ]
+    }
+  ]
+}

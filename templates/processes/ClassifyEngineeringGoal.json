@@ -1,0 +1,29 @@
+{
+  "id": "ClassifyEngineeringGoal",
+  "classify": false,
+  "consumes": [
+    "UserGoal"
+  ],
+  "produces": [
+    "ProcessSelection"
+  ],
+  "steps": [
+    {
+      "id": "classifyEngineeringGoal",
+      "process": "ClassifyEngineeringGoal",
+      "role": "investigate",
+      "engine": "native",
+      "in": [
+        "UserGoal"
+      ],
+      "out": [
+        "ProcessSelection"
+      ],
+      "timeoutMs": 600000,
+      "onFail": [
+        "escalate"
+      ],
+      "goalTemplate": "Confirm which catalog process matches this UserGoal. Do not invent a plan or start implementation."
+    }
+  ]
+}

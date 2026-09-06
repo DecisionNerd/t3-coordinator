@@ -3,6 +3,8 @@
  * Tests inject a fake adapter.
  */
 
+import type { T3Provider } from '../domain/models/types';
+
 export interface T3ThreadBusySnapshot {
   latestTurnState: string | null;
   sessionStatus: string | null;
@@ -15,6 +17,7 @@ export interface T3DispatchTurnInput {
   threadId: string;
   projectId?: string;
   messageText: string;
+  messageId?: string;
   instanceId?: string;
   modelId?: string;
   prepareWorktree?: {
@@ -36,14 +39,20 @@ export interface T3DispatchResult {
   adopted: boolean;
 }
 
+export interface T3WaitForTurnEndInput {
+  threadId: string;
+  pollMs?: number;
+  timeoutMs?: number;
+  signal?: AbortSignal;
+}
+
 export interface T3Adapter {
   dispatchTurn(input: T3DispatchTurnInput): Promise<T3DispatchResult>;
   getThreadBusy(threadId: string): Promise<T3ThreadBusySnapshot>;
-  waitForTurnEnd(input: {
-    threadId: string;
-    pollMs?: number;
-  }): Promise<{ turnId: string | null; state: string }>;
+  waitForTurnEnd(input: T3WaitForTurnEndInput): Promise<{ turnId: string | null; state: string }>;
   interruptTurn(input: { commandId: string; threadId: string }): Promise<void>;
+  getServerConfig(): Promise<{ providers: T3Provider[] }>;
+  refreshProviders(instanceId?: string): Promise<{ providers: T3Provider[] }>;
 }
 
 /**
@@ -51,6 +60,7 @@ export interface T3Adapter {
  */
 export class FakeT3Adapter implements T3Adapter {
   readonly dispatches: T3DispatchTurnInput[] = [];
+  readonly interrupts: Array<{ commandId: string; threadId: string }> = [];
   busy: T3ThreadBusySnapshot = {
     latestTurnState: null,
     sessionStatus: 'stopped',
@@ -58,6 +68,10 @@ export class FakeT3Adapter implements T3Adapter {
     hasRaisedHand: false,
   };
   turnEndState = 'completed';
+  /** When set, waitForTurnEnd hangs until abort, timeout, or this flag. */
+  hangUntil?: () => boolean;
+  providers: T3Provider[] = [];
+  refreshCount = 0;
   private readonly receipts = new Map<string, number>();
   private sequence = 0;
 
@@ -76,12 +90,35 @@ export class FakeT3Adapter implements T3Adapter {
     return this.busy;
   }
 
-  async waitForTurnEnd(): Promise<{ turnId: string | null; state: string }> {
-    return { turnId: 'turn-fake', state: this.turnEndState };
+  async waitForTurnEnd(input: T3WaitForTurnEndInput = { threadId: '' }): Promise<{ turnId: string | null; state: string }> {
+    const deadline = input.timeoutMs != null ? Date.now() + input.timeoutMs : Number.POSITIVE_INFINITY;
+    const pollMs = input.pollMs ?? 20;
+    while (Date.now() < deadline) {
+      if (input.signal?.aborted) {
+        return { turnId: 'turn-fake', state: 'interrupted' };
+      }
+      if (this.hangUntil && !this.hangUntil()) {
+        await new Promise((r) => setTimeout(r, pollMs));
+        continue;
+      }
+      return { turnId: 'turn-fake', state: this.turnEndState };
+    }
+    return { turnId: 'turn-fake', state: 'timeout' };
   }
 
-  async interruptTurn(): Promise<void> {
-    /* no-op */
+  async interruptTurn(input: { commandId: string; threadId: string }): Promise<void> {
+    this.interrupts.push(input);
+    this.turnEndState = 'interrupted';
+    this.hangUntil = undefined;
+  }
+
+  async getServerConfig(): Promise<{ providers: T3Provider[] }> {
+    return { providers: this.providers };
+  }
+
+  async refreshProviders(): Promise<{ providers: T3Provider[] }> {
+    this.refreshCount += 1;
+    return { providers: this.providers };
   }
 }
 

@@ -1,0 +1,35 @@
+{
+  "id": "ImplementSlices",
+  "classify": false,
+  "consumes": [
+    "ExecutionGraph",
+    "ConstraintSet"
+  ],
+  "produces": [
+    "ImplementationArtifact",
+    "VerificationEvidence"
+  ],
+  "steps": [
+    {
+      "id": "implementSlices",
+      "process": "ImplementSlices",
+      "role": "implement",
+      "engine": "worker",
+      "in": [
+        "ExecutionGraph",
+        "ConstraintSet"
+      ],
+      "out": [
+        "ImplementationArtifact",
+        "VerificationEvidence"
+      ],
+      "timeoutMs": 600000,
+      "onFail": [
+        "retry_same",
+        "retry_role",
+        "escalate"
+      ],
+      "goalTemplate": "Implement the ExecutionGraph slices for: {{goal}}\nHonor ConstraintSet. Commit with Coordinated-By. Do not skip a failed slice."
+    }
+  ]
+}

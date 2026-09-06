@@ -1,0 +1,33 @@
+{
+  "id": "IntegrationReview",
+  "classify": false,
+  "consumes": [
+    "ImplementationArtifact",
+    "VerificationEvidence"
+  ],
+  "produces": [
+    "ReviewFinding"
+  ],
+  "steps": [
+    {
+      "id": "integrationReview",
+      "process": "IntegrationReview",
+      "role": "review",
+      "engine": "worker",
+      "in": [
+        "ImplementationArtifact",
+        "VerificationEvidence"
+      ],
+      "out": [
+        "ReviewFinding"
+      ],
+      "timeoutMs": 600000,
+      "onFail": [
+        "retry_same",
+        "retry_role",
+        "escalate"
+      ],
+      "goalTemplate": "Review architecture, tests, and residual risk for: {{goal}}\nProduce ReviewFinding. Do not implement."
+    }
+  ]
+}

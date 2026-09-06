@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://t3-coordinator.dev/artifacts/ModelCatalog.json",
+  "title": "ModelCatalog",
+  "type": "object",
+  "required": [
+    "kind"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "kind": {
+      "const": "ModelCatalog"
+    },
+    "fetchedAt": {
+      "type": "string"
+    },
+    "models": {
+      "type": "array"
+    }
+  }
+}

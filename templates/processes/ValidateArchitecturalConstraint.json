@@ -1,0 +1,31 @@
+{
+  "id": "ValidateArchitecturalConstraint",
+  "classify": false,
+  "consumes": [
+    "ImplementationArtifact",
+    "ConstraintSet"
+  ],
+  "produces": [
+    "VerificationEvidence"
+  ],
+  "steps": [
+    {
+      "id": "validateArchitecturalConstraint",
+      "process": "ValidateArchitecturalConstraint",
+      "role": "check",
+      "engine": "worker",
+      "in": [
+        "ImplementationArtifact",
+        "ConstraintSet"
+      ],
+      "out": [
+        "VerificationEvidence"
+      ],
+      "timeoutMs": 600000,
+      "onFail": [
+        "escalate"
+      ],
+      "goalTemplate": "Check ConstraintSet against the tree. FAIL with file/line evidence when forbidden logic remains (e.g. Python still owns domain branching). Do not re-implement."
+    }
+  ]
+}

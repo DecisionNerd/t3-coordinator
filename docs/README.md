@@ -14,6 +14,7 @@ Living docs for **t3-coordinator**: a Temporal-backed coordination service aroun
 | [`engineering/CONTRACTS.md`](engineering/CONTRACTS.md) | MCP, state machine, mailbox, reconciliation. |
 | [`engineering/T3-INTEGRATION.md`](engineering/T3-INTEGRATION.md) | Evidence from pingdotgg/t3code, not guesses. |
 | [`engineering/ARCHITECTURE.md`](engineering/ARCHITECTURE.md) | How is the system built? |
+| [`engineering/MODEL-SELECTION.md`](engineering/MODEL-SELECTION.md) | AA hourly catalog ∩ T3 runnable gate; worker Q/C Pareto vs reviewer frontier |
 | [`engineering/TESTING.md`](engineering/TESTING.md) | How do we prove the v0 gate? |
 | [`engineering/PUBLISHING.md`](engineering/PUBLISHING.md) | How does a verified change reach users safely? |
 | [`engineering/OBSERVABILITY.md`](engineering/OBSERVABILITY.md) | How do we know it works and feed learning back? |

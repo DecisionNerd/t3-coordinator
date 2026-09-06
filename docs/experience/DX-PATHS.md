@@ -2,7 +2,7 @@
 
 How to talk to **@t3-coordinator** (MCP `run` phrase or typed tools). GitHub holds intent; the coordinator shapes backlog **and** runs durable handoffs.
 
-**Thin supervisor:** almost all work (implementation **and** investigations) happens in worker sub-agents. The supervisor mostly reads requirements / `next` / `sitrep`, then `complete` / `push_issue` / `submit_review`. Do not dig the repo or implement in the supervisor chat.
+**Thin supervisor:** almost all work (implementation **and** investigations) happens in worker sub-agents. The supervisor mostly reads requirements / `next` / `sitrep`, classifies or `start`s a process, then `complete` / `push_issue` / `submit_review`. On `StepFailed`, pick only `allowedNext`. Do not dig the repo, invent a plan, or implement in the supervisor chat.
 
 Set worker prefs once if you will push work (`defaults-set --t3-project … --instance … --model …`). **GitHub repo is not a sticky default** — it is detected from the current T3 project checkout (git root). If not in a repo, tools ask which project to open.
 
@@ -10,11 +10,14 @@ Set worker prefs once if you will push work (`defaults-set --t3-project … --in
 
 | You say | Path | What happens |
 |---|---|---|
-| *(empty)* / `next` | Orient | Review goals (if any) + backlog; supervisor decides next action (no auto-assign) |
+| *(empty)* / `next` | Orient | Review goals (if any) + backlog **and blocked/failed process instances**; supervisor decides next action (no auto-assign) |
 | `sitrep` / `standup` / `status` | Sitrep | Standup check-in: accomplished, blockers, coming up (`sitrep 14d` for window) |
-| `192` / `#192` | C | Push that issue (spec commit + assignment) |
-| `complete M2` | B | Push next open issue on milestone M2 |
-| `complete epic 50` | D | Push next open **child** of parent issue #50 (milestone optional) |
+| *freeform goal* | Classify | Scored catalog matches only. Does **not** plan or start workers. Below threshold → `ProcessMapGap` |
+| `start <processId>` | Instantiate | Start that process against the current repo + goal (after classify) |
+| `192` / `#192` | C | Skip classify. Push that issue (ImplementSlice: spec commit + assignment) |
+| `complete M2` | B | Skip classify. Push next open issue on milestone M2 |
+| `complete epic 50` | D | Skip classify. Push next open **child** of parent issue #50 (milestone optional) |
+| `retry` / `block` / `cancel` | Failure | Signal `allowedNext` on the current failed process instance |
 | `status 192` / `plan 192` / `critique 192` / `refine 192` … | Issue admin | Shape / review (mutations need `issue` tool + `apply:true`) |
 | `status M2` / `plan milestone M2` / `create milestone …` / `close M2` | Milestone admin | Full milestone lifecycle |
 | `epic 50` / `status epic 50` / `create epic …` / `close epic 50` | Epic admin | Parent tracker lifecycle |
