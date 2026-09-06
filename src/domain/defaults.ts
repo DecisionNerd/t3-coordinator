@@ -21,6 +21,9 @@ export interface ProjectDefaults {
   baseBranch?: string;
   instanceId?: string;
   modelId?: string;
+  /** Optional author for coordinator-made commits (spec SHA). Never writes git config. */
+  gitUserName?: string;
+  gitUserEmail?: string;
 }
 
 export function defaultsPath(home = coordinatorHome()): string {

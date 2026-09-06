@@ -2,9 +2,32 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { GhIssue } from '../github/gh';
+import { readDefaults } from './defaults';
 
-function git(cwd: string, args: string[]): string {
-  const res = spawnSync('git', args, { cwd, encoding: 'utf8' });
+/** Identity for coordinator-made commits only — never writes git config. */
+export function coordinatorGitIdentity(): { name: string; email: string } {
+  const defaults = readDefaults();
+  const name =
+    process.env.COORD_GIT_AUTHOR_NAME?.trim() ||
+    defaults?.gitUserName?.trim() ||
+    't3-coordinator';
+  const email =
+    process.env.COORD_GIT_AUTHOR_EMAIL?.trim() ||
+    defaults?.gitUserEmail?.trim() ||
+    't3-coordinator@users.noreply.github.com';
+  return { name, email };
+}
+
+function git(cwd: string, args: string[], opts?: { withIdentity?: boolean }): string {
+  const env = { ...process.env };
+  if (opts?.withIdentity !== false) {
+    const id = coordinatorGitIdentity();
+    env.GIT_AUTHOR_NAME = id.name;
+    env.GIT_AUTHOR_EMAIL = id.email;
+    env.GIT_COMMITTER_NAME = id.name;
+    env.GIT_COMMITTER_EMAIL = id.email;
+  }
+  const res = spawnSync('git', args, { cwd, encoding: 'utf8', env });
   if (res.status !== 0) {
     throw new Error(`git ${args.join(' ')} failed: ${res.stderr || res.stdout}`);
   }
@@ -12,12 +35,13 @@ function git(cwd: string, args: string[]): string {
 }
 
 export function revParseHead(projectCwd: string): string {
-  return git(projectCwd, ['rev-parse', 'HEAD']);
+  return git(projectCwd, ['rev-parse', 'HEAD'], { withIdentity: false });
 }
 
 /**
  * Commit a thin spec from the GitHub issue so assign_work has a real specSha.
  * Idempotent-ish: overwrites `.coordinator/specs/issue-<n>.md` and commits when dirty.
+ * Uses per-process author env (or -c overrides) — does not set user.name/email in git config.
  */
 export function commitIssueSpec(projectCwd: string, issue: GhIssue): {
   specSha: string;
@@ -45,13 +69,21 @@ export function commitIssueSpec(projectCwd: string, issue: GhIssue): {
   ].join('\n');
   fs.writeFileSync(abs, body, 'utf8');
 
-  git(projectCwd, ['add', '--', rel]);
-  const dirty = spawnSync('git', ['diff', '--cached', '--quiet'], { cwd: projectCwd });
+  git(projectCwd, ['add', '--', rel], { withIdentity: false });
+  const dirty = spawnSync('git', ['diff', '--cached', '--quiet'], {
+    cwd: projectCwd,
+    encoding: 'utf8',
+  });
   if (dirty.status === 0) {
-    // nothing staged — reuse HEAD as spec
     return { specSha: baseCommit, baseCommit, specPath: rel };
   }
+
+  const id = coordinatorGitIdentity();
   git(projectCwd, [
+    '-c',
+    `user.name=${id.name}`,
+    '-c',
+    `user.email=${id.email}`,
     'commit',
     '-m',
     `coord(spec): issue #${issue.number} ${issue.title}\n\nSpec-For: #${issue.number}`,
