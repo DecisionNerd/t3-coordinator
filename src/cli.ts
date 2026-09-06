@@ -4,6 +4,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { bindSupervisor, bindingsPath, getSupervisorBinding } from './domain/bindings';
 import { defaultsPath, mergeDefaults, readDefaults } from './domain/defaults';
+import { ensureMcpProviders, mcpProviderReport } from './domain/ensureMcp';
 import { runDxIntent } from './domain/dx';
 import { tryResolveProjectContext } from './domain/repoContext';
 import { credentialsPath, readT3Credentials, writeT3Credentials } from './t3/credentials';
@@ -18,7 +19,8 @@ function usage(): never {
   t3-coordinator defaults
   t3-coordinator defaults-set [--t3-project <uuid>] [--instance <id>] [--model <id>] [--env env-local] [--branch main] [--cwd <hint>]
       # GitHub repo is detected from the current T3 checkout — do not set a sticky --github default
-  t3-coordinator bind-supervisor --environment <id> --thread <threadId>
+  t3-coordinator ensure-mcp              # register MCP on Codex/Cursor so every new T3 chat sees tools
+  t3-coordinator bind-supervisor --environment <id> --thread <threadId>   # optional; assign auto-binds from calling thread
   t3-coordinator get-binding --environment <id>
   t3-coordinator auth-issue [--ttl 30d] [--label t3-coordinator]
   t3-coordinator doctor
@@ -155,6 +157,10 @@ async function main(): Promise<void> {
     console.log(`${pkg.name} ${pkg.version}`);
     return;
   }
+  if (cmd === 'ensure-mcp') {
+    console.log(JSON.stringify({ ok: true, ...ensureMcpProviders() }, null, 2));
+    return;
+  }
   if (cmd === 'bind-supervisor') {
     const environmentId = readFlag(args, '--environment');
     const thread = readFlag(args, '--thread');
@@ -255,6 +261,7 @@ async function main(): Promise<void> {
             : null,
           snapshotOk,
           bindingEnvLocal: getSupervisorBinding('env-local') ?? null,
+          mcpProviders: mcpProviderReport(),
           operatingProfile: operatingProfilePaths(),
         },
         null,

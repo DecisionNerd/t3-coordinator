@@ -77,27 +77,34 @@ describe('delivery trailer', () => {
 });
 
 describe('supervisor binding resolve', () => {
-  it('rejects unbound and mismatched overrides', () => {
+  it('uses calling thread without sticky bind; rebinds when chat changes', () => {
     assert.deepEqual(resolveSupervisorThread({ binding: undefined }), {
       ok: false,
       error: 'supervisor_unbound',
     });
+    assert.deepEqual(
+      resolveSupervisorThread({ binding: undefined, requestedThreadId: 'thr_new' }),
+      { ok: true, supervisorThreadId: 'thr_new', shouldBind: true },
+    );
     const binding = {
       environmentId: 'env',
       supervisorThreadId: 'thr_sup',
       boundAt: 't',
     };
-    assert.deepEqual(
-      resolveSupervisorThread({ binding, requestedThreadId: 'thr_other' }),
-      { ok: false, error: 'supervisor_thread_mismatch' },
-    );
+    assert.deepEqual(resolveSupervisorThread({ binding, requestedThreadId: 'thr_other' }), {
+      ok: true,
+      supervisorThreadId: 'thr_other',
+      shouldBind: true,
+    });
     assert.deepEqual(resolveSupervisorThread({ binding }), {
       ok: true,
       supervisorThreadId: 'thr_sup',
+      shouldBind: false,
     });
     assert.deepEqual(resolveSupervisorThread({ binding, requestedThreadId: 'thr_sup' }), {
       ok: true,
       supervisorThreadId: 'thr_sup',
+      shouldBind: false,
     });
   });
 

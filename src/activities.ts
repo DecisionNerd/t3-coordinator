@@ -1,5 +1,5 @@
 import { nanoid } from 'nanoid';
-import { getSupervisorBinding } from './domain/bindings';
+import { bindSupervisor, getSupervisorBinding } from './domain/bindings';
 import {
   resolveSupervisorThread,
   workerPromptContract,
@@ -15,15 +15,30 @@ export async function resolveAssignWork(
   input: AssignWorkInput,
 ): Promise<
   | { ok: true; assignmentId: string; supervisorThreadId: string }
-  | { ok: false; error: 'supervisor_unbound' | 'supervisor_thread_mismatch' }
+  | { ok: false; error: 'supervisor_unbound'; ask: string }
 > {
+  const envThread =
+    input.supervisorThreadId ??
+    process.env.T3_THREAD_ID ??
+    process.env.T3_SUPERVISOR_THREAD_ID ??
+    process.env.COORD_SUPERVISOR_THREAD_ID;
   const binding = getSupervisorBinding(input.environmentId);
   const resolved = resolveSupervisorThread({
     binding,
-    requestedThreadId: input.supervisorThreadId,
+    requestedThreadId: envThread,
   });
   if (!resolved.ok) {
-    return resolved;
+    return {
+      ok: false,
+      error: 'supervisor_unbound',
+      ask: 'This chat can use MCP without a sticky bind. For assign/push, pass supervisorThreadId (this T3 thread id) once — we will bind automatically — or set COORD_SUPERVISOR_THREAD_ID.',
+    };
+  }
+  if (resolved.shouldBind) {
+    bindSupervisor({
+      environmentId: input.environmentId,
+      supervisorThreadId: resolved.supervisorThreadId,
+    });
   }
   return {
     ok: true,

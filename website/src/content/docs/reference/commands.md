@@ -13,7 +13,8 @@ description: t3-coordinator CLI and day-to-day commands.
 | `t3-coordinator bind-supervisor --environment <id> --thread <id>` | Durable supervisor binding |
 | `t3-coordinator get-binding --environment <id>` | Show binding |
 | `t3-coordinator defaults` / `defaults-set` | Show / set optional worker prefs (t3 project, instance, model). Repo is detected from the current checkout |
-| `t3-coordinator doctor` | Auth, binding, snapshot, profile paths |
+| `t3-coordinator ensure-mcp` | Register MCP on Codex/Cursor so every new T3 chat sees tools |
+| `t3-coordinator doctor` | Auth, binding, MCP providers, snapshot, profile paths |
 | `t3-coordinator version` | Print package version |
 | `t3-coordinator run "<phrase>"` | Same router as MCP `run` (`192`, `complete M2`, `sitrep`, …) |
 

@@ -122,22 +122,30 @@ export function assignmentIdempotencyKey(input: AssignWorkInput): string {
   ].join('\0');
 }
 
+/**
+ * Resolve which T3 thread owns mailbox follow-ups for an assignment.
+ * Any chat can be the supervisor: prefer the calling thread id, else the saved binding.
+ * Sticky bind is optional — new chats do not need bind-supervisor just to use MCP.
+ */
 export function resolveSupervisorThread(input: {
   binding: SupervisorBinding | undefined;
   requestedThreadId?: string;
 }):
-  | { ok: true; supervisorThreadId: string }
-  | { ok: false; error: 'supervisor_unbound' | 'supervisor_thread_mismatch' } {
-  if (!input.binding) {
-    return { ok: false, error: 'supervisor_unbound' };
+  | { ok: true; supervisorThreadId: string; shouldBind: boolean }
+  | { ok: false; error: 'supervisor_unbound' } {
+  if (input.requestedThreadId) {
+    const shouldBind =
+      !input.binding || input.binding.supervisorThreadId !== input.requestedThreadId;
+    return { ok: true, supervisorThreadId: input.requestedThreadId, shouldBind };
   }
-  if (
-    input.requestedThreadId !== undefined &&
-    input.requestedThreadId !== input.binding.supervisorThreadId
-  ) {
-    return { ok: false, error: 'supervisor_thread_mismatch' };
+  if (input.binding) {
+    return {
+      ok: true,
+      supervisorThreadId: input.binding.supervisorThreadId,
+      shouldBind: false,
+    };
   }
-  return { ok: true, supervisorThreadId: input.binding.supervisorThreadId };
+  return { ok: false, error: 'supervisor_unbound' };
 }
 
 export function isThreadBusy(snapshot: {

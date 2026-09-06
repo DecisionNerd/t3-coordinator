@@ -324,7 +324,10 @@ server.tool(
   async (args) => {
     const resolved = await resolveAssignWork(args);
     if (!resolved.ok) {
-      return jsonResult({ error: resolved.error }, true);
+      return jsonResult(
+        { ok: false, error: resolved.error, ask: 'ask' in resolved ? resolved.ask : undefined },
+        true,
+      );
     }
     const client = await temporalClient();
     const handle = await client.workflow.start(assignmentWorkflow, {

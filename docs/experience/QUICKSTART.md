@@ -25,27 +25,13 @@ Developing from a clone: `npm install`, then `npm start` / `npm run cli` instead
 
 ```bash
 t3-coordinator auth-issue --ttl 30d --label t3-coordinator
+t3-coordinator ensure-mcp    # Codex + Cursor — so every new T3 chat sees the tools
 t3-coordinator doctor
 ```
 
-In T3, open the **supervisor** thread. Copy its id:
+`ensure-mcp` writes the supervisor provider MCP config. **Start a new T3 chat** (or restart the provider session) after that — no per-thread bind is required to see tools.
 
-```bash
-t3-coordinator bind-supervisor --environment env-local --thread <supervisorThreadId>
-```
-
-Add MCP on the **supervisor provider only** (not workers):
-
-```json
-{
-  "mcpServers": {
-    "t3-coordinator": {
-      "command": "t3-coordinator",
-      "args": ["mcp"]
-    }
-  }
-}
-```
+Optional: `bind-supervisor` only if you want a sticky mailbox thread; assign/push can pass `supervisorThreadId` and auto-bind.
 
 Optional: copy and edit a workflow profile so helpers match how you work — [OPERATING-PROFILE.md](OPERATING-PROFILE.md).
 
@@ -70,7 +56,7 @@ Leave that running. The host spawns `t3-coordinator mcp` when the supervisor nee
 
 ## First assignment (DX)
 
-From the supervisor, after bind (and worker prefs if pushing):
+From the supervisor (after ensure-mcp + optional worker prefs):
 
 | Phrase | Effect |
 |---|---|

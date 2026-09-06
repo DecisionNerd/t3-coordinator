@@ -88,6 +88,14 @@ EOF
 rm -rf "$TMP_DIR"
 
 say ""
+say "Registering MCP on supervisor providers (Codex/Cursor)…"
+if command -v node >/dev/null 2>&1 && [ -f "${INSTALL_DIR}/lib/cli.js" ]; then
+  node "${INSTALL_DIR}/lib/cli.js" ensure-mcp || say "ensure-mcp reported an issue — run: t3-coordinator ensure-mcp"
+else
+  say "Skip ensure-mcp (bin not ready) — run: t3-coordinator ensure-mcp"
+fi
+
+say ""
 say "Installed t3-coordinator."
 say "  app:  ${INSTALL_DIR}"
 say "  bin:  ${WRAPPER}"
@@ -109,11 +117,11 @@ say ""
 say "Next:"
 say "  t3-coordinator doctor"
 say "  t3-coordinator auth-issue"
-say "  t3-coordinator bind-supervisor --environment env-local --thread <supervisorThreadId>"
 say "  t3-coordinator start"
+say "  # Open a NEW T3 chat — MCP tools should appear (ensure-mcp already ran)"
 say ""
-say "MCP (supervisor provider only):"
-say '  { "mcpServers": { "t3-coordinator": { "command": "t3-coordinator", "args": ["mcp"] } } }'
+say "Optional — sticky mailbox thread (assign/push can also pass supervisorThreadId and auto-bind):"
+say "  t3-coordinator bind-supervisor --environment env-local --thread <supervisorThreadId>"
 say ""
 say "Optional — personalize how you prepare specs (no reinstall):"
 say "  cp ${INSTALL_DIR}/templates/operating-profile.default.json ~/.t3-coordinator/operating-profile.json"

@@ -17,20 +17,17 @@ The **supervisor** is a frontier-model session in T3 (Fable, Astra, or equivalen
 | `supervisorInstanceId` | T3 `ModelSelection.instanceId` |
 | `supervisorModelId` | T3 `ModelSelection.model` (e.g. Fable, Astra); never the only identity |
 
-### Supervisor binding (required for MCP)
+### Supervisor binding (optional for MCP visibility)
 
-Native provider MCP has no T3 thread scope. Operators bind out-of-band:
+MCP tools are registered on the **provider** (Codex/Cursor) via `t3-coordinator ensure-mcp` so **every new T3 chat** can see them. No sticky bind is required to call `run` / `sitrep` / `issue`.
 
-```bash
-npx t3-coordinator bind-supervisor --environment <environmentId> --thread <threadId>
-```
+For assign/push mailbox follow-ups:
 
-Writes `~/.t3-coordinator/bindings.json` (override with `T3_COORDINATOR_HOME`).
+- Prefer `supervisorThreadId` on the call (this chat’s thread) — we **auto-bind** and update `~/.t3-coordinator/bindings.json`.
+- Or env `COORD_SUPERVISOR_THREAD_ID` / `T3_THREAD_ID`.
+- Or a prior `bind-supervisor` for the environment.
 
-- `assign_work` **defaults** `supervisorThreadId` from the binding.
-- v0 **rejects** a caller-supplied thread id that disagrees with the binding.
-- If unbound, `assign_work` fails with `supervisor_unbound`.
-- `get_binding` returns the current binding for confirmation.
+Caller thread **wins** over a stale binding (new chats are first-class). If nothing is available, `assign_work` returns `supervisor_unbound` with an ask — not a hard requirement to bind before opening MCP.
 
 Workers are separate T3 threads: `workerThreadId` + T3 `instanceId` + `model` + `worktreePath`.
 
@@ -142,7 +139,7 @@ GitHub mutations default to **preview**; pass `apply: true` to write.
 | `goal` | yes | Short bound; does not replace `specSha` |
 
 **Returns:** `{ assignmentId }`  
-**Errors:** `supervisor_unbound`, `supervisor_thread_mismatch`, unknown repo, missing spec SHA, concurrency cap.
+**Errors:** `supervisor_unbound` (with ask), unknown repo, missing spec SHA, concurrency cap.
 
 Idempotency key: (`repo`, `specSha`, `baseCommit`, `environmentId`, `instanceId`, `modelId`) or client-supplied `assignmentId`.
 
