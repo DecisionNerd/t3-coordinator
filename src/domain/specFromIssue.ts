@@ -4,18 +4,53 @@ import * as path from 'node:path';
 import type { GhIssue } from '../github/gh';
 import { readDefaults } from './defaults';
 
-/** Identity for coordinator-made commits only — never writes git config. */
-export function coordinatorGitIdentity(): { name: string; email: string } {
+type GhUser = {
+  login?: string;
+  id?: number;
+  name?: string | null;
+  email?: string | null;
+};
+
+function ghAuthedUser(): GhUser | null {
+  const res = spawnSync('gh', ['api', 'user'], { encoding: 'utf8', env: process.env });
+  if (res.status !== 0) return null;
+  try {
+    return JSON.parse(res.stdout) as GhUser;
+  } catch {
+    return null;
+  }
+}
+
+/** Identity for coordinator-made commits only — never writes git config. Prefers `gh` login. */
+export function coordinatorGitIdentity(): { name: string; email: string; source: string } {
   const defaults = readDefaults();
-  const name =
-    process.env.COORD_GIT_AUTHOR_NAME?.trim() ||
-    defaults?.gitUserName?.trim() ||
-    't3-coordinator';
+  const envName = process.env.COORD_GIT_AUTHOR_NAME?.trim();
+  const envEmail = process.env.COORD_GIT_AUTHOR_EMAIL?.trim();
+  if (envName && envEmail) {
+    return { name: envName, email: envEmail, source: 'env' };
+  }
+
+  const ghUser = ghAuthedUser();
+  if (ghUser?.login) {
+    const name =
+      envName ||
+      defaults?.gitUserName?.trim() ||
+      ghUser.name?.trim() ||
+      ghUser.login;
+    const email =
+      envEmail ||
+      defaults?.gitUserEmail?.trim() ||
+      ghUser.email?.trim() ||
+      (typeof ghUser.id === 'number'
+        ? `${ghUser.id}+${ghUser.login}@users.noreply.github.com`
+        : `${ghUser.login}@users.noreply.github.com`);
+    return { name, email, source: 'gh' };
+  }
+
+  const name = envName || defaults?.gitUserName?.trim() || 't3-coordinator';
   const email =
-    process.env.COORD_GIT_AUTHOR_EMAIL?.trim() ||
-    defaults?.gitUserEmail?.trim() ||
-    't3-coordinator@users.noreply.github.com';
-  return { name, email };
+    envEmail || defaults?.gitUserEmail?.trim() || 't3-coordinator@users.noreply.github.com';
+  return { name, email, source: defaults?.gitUserName || defaults?.gitUserEmail ? 'defaults' : 'fallback' };
 }
 
 function git(cwd: string, args: string[], opts?: { withIdentity?: boolean }): string {
