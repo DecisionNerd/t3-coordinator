@@ -208,18 +208,28 @@ function ensureGrokMcp(bin: string): McpProviderStatus {
 }
 
 /**
- * Enable all common provider drivers in T3 settings so the operator can pick any supervisor.
- * Does not disable anything already enabled.
+ * Enable every provider T3 already knows about (from ~/.t3/caches) so the operator
+ * can pick any supervisor. Never invent a second Claude — T3's driver id is `claudeAgent`.
  */
 function ensureT3ProvidersEnabled(): McpProviderStatus {
-  const settingsPath = path.join(os.homedir(), '.t3', 'userdata', 'settings.json');
-  if (!fs.existsSync(path.dirname(settingsPath))) {
+  const t3Home = path.join(os.homedir(), '.t3');
+  const settingsPath = path.join(t3Home, 'userdata', 'settings.json');
+  const cachesDir = path.join(t3Home, 'caches');
+  if (!fs.existsSync(path.join(t3Home, 'userdata'))) {
     return {
       provider: 't3-settings',
       configured: false,
       detail: 'No ~/.t3/userdata — T3 not installed here',
     };
   }
+
+  const knownDrivers = fs.existsSync(cachesDir)
+    ? fs
+        .readdirSync(cachesDir)
+        .filter((f) => f.endsWith('.json'))
+        .map((f) => f.replace(/\.json$/, ''))
+    : ['codex', 'cursor', 'claudeAgent', 'opencode', 'grok'];
+
   const data = readJsonObject(settingsPath);
   const providers = (data.providers as Record<string, { enabled?: boolean }> | undefined) ?? {};
   const instances =
@@ -228,26 +238,37 @@ function ensureT3ProvidersEnabled(): McpProviderStatus {
       { driver?: string; enabled?: boolean; config?: Record<string, unknown> }
     > | undefined) ?? {};
 
-  const wanted = ['codex', 'cursor', 'claude', 'opencode', 'grok'] as const;
   const changed: string[] = [];
-  for (const id of wanted) {
-    if (!providers[id]) providers[id] = { enabled: true };
-    else if (providers[id].enabled === false) {
+
+  // Remove mistaken "claude" alias we may have created (real driver is claudeAgent)
+  if (instances.claude && instances.claude.driver === 'claude') {
+    delete instances.claude;
+    changed.push('removed:claude(instance)');
+  }
+  if (providers.claude && !knownDrivers.includes('claude')) {
+    delete providers.claude;
+    changed.push('removed:claude(provider)');
+  }
+
+  for (const id of knownDrivers) {
+    if (!providers[id]) {
+      providers[id] = { enabled: true };
+      changed.push(`${id}:provider+`);
+    } else if (providers[id].enabled === false) {
       providers[id].enabled = true;
-      changed.push(id);
+      changed.push(`${id}:provider`);
     }
+
     if (!instances[id]) {
-      instances[id] = {
-        driver: id === 'claude' ? 'claude' : id,
-        enabled: true,
-        config: {},
-      };
-      changed.push(`${id}:instance`);
+      // Only create a stub if T3 already catalogs this driver — use cache id as driver
+      instances[id] = { driver: id, enabled: true, config: {} };
+      changed.push(`${id}:instance+`);
     } else if (instances[id].enabled === false) {
       instances[id].enabled = true;
       changed.push(`${id}:instance`);
     }
   }
+
   data.providers = providers;
   data.providerInstances = instances;
   writeJson(settingsPath, data);
@@ -257,8 +278,8 @@ function ensureT3ProvidersEnabled(): McpProviderStatus {
     path: settingsPath,
     detail:
       changed.length > 0
-        ? `Enabled providers/instances: ${changed.join(', ')}`
-        : 'All common providers already enabled (or created)',
+        ? `Updated: ${changed.join(', ')}`
+        : `Providers from caches: ${knownDrivers.join(', ')} (already enabled)`,
     action: changed.length > 0 ? 'updated' : undefined,
   };
 }
