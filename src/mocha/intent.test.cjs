@@ -11,7 +11,14 @@ describe('parseIntent', () => {
     assert.deepStrictEqual(parseIntent('   '), { kind: 'next' });
     assert.deepStrictEqual(parseIntent('next'), { kind: 'next' });
     assert.deepStrictEqual(parseIntent('what next'), { kind: 'next' });
-    assert.deepStrictEqual(parseIntent('standup'), { kind: 'next' });
+  });
+
+  it('maps sitrep and standup to sitrep', () => {
+    assert.deepStrictEqual(parseIntent('sitrep'), { kind: 'sitrep', windowDays: undefined });
+    assert.deepStrictEqual(parseIntent('standup'), { kind: 'sitrep', windowDays: undefined });
+    assert.deepStrictEqual(parseIntent('status'), { kind: 'sitrep', windowDays: undefined });
+    assert.deepStrictEqual(parseIntent('check-in'), { kind: 'sitrep', windowDays: undefined });
+    assert.deepStrictEqual(parseIntent('sitrep 14d'), { kind: 'sitrep', windowDays: 14 });
   });
 
   it('maps bare issue numbers to Path C', () => {

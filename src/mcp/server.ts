@@ -18,6 +18,7 @@ import { completeEpic, completeMilestone, pushIssue, runDxIntent } from '../doma
 import { runIssueCommand, runMilestoneCommand } from '../domain/backlog';
 import { epicStatus, EPIC_BODY_TEMPLATE } from '../domain/epic';
 import { orientNext } from '../domain/orient';
+import { sitrep } from '../domain/sitrep';
 import { readDefaults } from '../domain/defaults';
 import {
   assignmentWorkflow,
@@ -52,7 +53,7 @@ const server = new McpServer({
 
 server.tool(
   'run',
-  'Primary DX entry after @t3-coordinator. Empty phrase / "next" = review goals + backlog and decide what to do next (no auto-assign). Phrases: "192", "complete M2", "complete epic 50", "status 192", "plan milestone M2", "critique epic 50", "create epic …", "close 192". Mutations preview unless issue/milestone tools use apply:true.',
+  'Primary DX entry after @t3-coordinator. Empty/"next" = decide next action. "sitrep"/"standup"/"status" = standup check-in (accomplished, blockers, coming up). Also: "192", "complete M2", "complete epic 50", plan/critique/create/close. Mutations preview unless issue/milestone tools use apply:true.',
   { phrase: z.string().optional().default('') },
   async ({ phrase }) => {
     try {
@@ -76,6 +77,22 @@ server.tool(
   async () => {
     try {
       return jsonResult({ intent: { kind: 'next' }, result: orientNext() });
+    } catch (err) {
+      return jsonResult({ ok: false, error: String(err) }, true);
+    }
+  },
+);
+
+server.tool(
+  'sitrep',
+  'Standup check-in: recently closed issues + merged PRs, blockers (labels/notes/open PRs), and coming-up (milestones/epics/suggested next). Optional windowDays (default 7). Does not start work.',
+  { windowDays: z.number().int().min(1).max(90).optional() },
+  async ({ windowDays }) => {
+    try {
+      return jsonResult({
+        intent: { kind: 'sitrep', windowDays },
+        result: sitrep(windowDays),
+      });
     } catch (err) {
       return jsonResult({ ok: false, error: String(err) }, true);
     }

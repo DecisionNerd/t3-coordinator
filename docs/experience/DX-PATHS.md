@@ -9,6 +9,7 @@ Set defaults once (`t3-coordinator defaults-set …`) and bind a supervisor thre
 | You say | Path | What happens |
 |---|---|---|
 | *(empty)* / `next` | Orient | Review goals (if any) + backlog; supervisor decides next action (no auto-assign) |
+| `sitrep` / `standup` / `status` | Sitrep | Standup check-in: accomplished, blockers, coming up (`sitrep 14d` for window) |
 | `192` / `#192` | C | Push that issue (spec commit + assignment) |
 | `complete M2` | B | Push next open issue on milestone M2 |
 | `complete epic 50` | D | Push next open **child** of parent issue #50 (milestone optional) |
@@ -16,9 +17,11 @@ Set defaults once (`t3-coordinator defaults-set …`) and bind a supervisor thre
 | `status M2` / `plan milestone M2` / `create milestone …` / `close M2` | Milestone admin | Full milestone lifecycle |
 | `epic 50` / `status epic 50` / `create epic …` / `close epic 50` | Epic admin | Parent tracker lifecycle |
 
-Typed tools: `run`, `next`, `issue`, `milestone`, `epic`, `push_issue`, `complete_milestone`, `complete_epic`, plus low-level assign/review.
+Typed tools: `run`, `next`, `sitrep`, `issue`, `milestone`, `epic`, `push_issue`, `complete_milestone`, `complete_epic`, plus low-level assign/review.
 
 **Empty @mention:** call `run` with no phrase (or `next`). Returns `supervisorInstructions`, optional `~/.t3-coordinator/goals.md` / `goals.json`, and a live GitHub snapshot. The supervisor must then choose a concrete phrase — orientation never starts a worker.
+
+**Sitrep:** `sitrep` / `standup` / `status` (or MCP `sitrep`). Optional `~/.t3-coordinator/blockers.md` for human-noted blockers. Issues with blocked/blocker labels (or “blocked by” in body) surface automatically.
 
 Mutating GitHub (`create` / `update` / `refine` / `close` / …) **previews** from `run` phrases; call `issue` / `milestone` / `epic` with `apply: true` to write.
 

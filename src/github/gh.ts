@@ -29,6 +29,19 @@ export interface GhIssue {
   url: string;
   state: string;
   milestone?: { title: string; number: number } | null;
+  labels?: { name: string }[];
+  closedAt?: string | null;
+  updatedAt?: string;
+  createdAt?: string;
+}
+
+export interface GhPullRequest {
+  number: number;
+  title: string;
+  url: string;
+  state: string;
+  mergedAt?: string | null;
+  updatedAt?: string;
 }
 
 export interface GhMilestone {
@@ -49,7 +62,7 @@ export function getIssue(githubRepo: string, issueNumber: number): GhIssue {
     '--repo',
     githubRepo,
     '--json',
-    'number,title,body,url,state,milestone',
+    'number,title,body,url,state,milestone,labels,closedAt,updatedAt,createdAt',
   ]);
 }
 
@@ -73,7 +86,7 @@ export function listOpenIssuesInMilestone(githubRepo: string, milestoneNumber: n
     '--limit',
     '100',
     '--json',
-    'number,title,body,url,state,milestone',
+    'number,title,body,url,state,milestone,labels,closedAt,updatedAt,createdAt',
   ]);
 }
 
@@ -89,7 +102,55 @@ export function listOpenIssues(githubRepo: string, limit = 40): GhIssue[] {
     '--limit',
     String(limit),
     '--json',
-    'number,title,body,url,state,milestone',
+    'number,title,body,url,state,milestone,labels,closedAt,updatedAt,createdAt',
+  ]);
+}
+
+/** Recently closed issues (gh returns newest closed first). */
+export function listClosedIssues(githubRepo: string, limit = 20): GhIssue[] {
+  return ghJson<GhIssue[]>([
+    'issue',
+    'list',
+    '--repo',
+    githubRepo,
+    '--state',
+    'closed',
+    '--limit',
+    String(limit),
+    '--json',
+    'number,title,body,url,state,milestone,labels,closedAt,updatedAt,createdAt',
+  ]);
+}
+
+/** Open PRs. */
+export function listOpenPullRequests(githubRepo: string, limit = 20): GhPullRequest[] {
+  return ghJson<GhPullRequest[]>([
+    'pr',
+    'list',
+    '--repo',
+    githubRepo,
+    '--state',
+    'open',
+    '--limit',
+    String(limit),
+    '--json',
+    'number,title,url,state,mergedAt,updatedAt',
+  ]);
+}
+
+/** Recently merged PRs. */
+export function listMergedPullRequests(githubRepo: string, limit = 15): GhPullRequest[] {
+  return ghJson<GhPullRequest[]>([
+    'pr',
+    'list',
+    '--repo',
+    githubRepo,
+    '--state',
+    'merged',
+    '--limit',
+    String(limit),
+    '--json',
+    'number,title,url,state,mergedAt,updatedAt',
   ]);
 }
 

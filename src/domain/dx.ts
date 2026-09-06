@@ -7,6 +7,7 @@ import { parseIntent } from './intent';
 import { runIssueCommand, runMilestoneCommand } from './backlog';
 import { EPIC_BODY_TEMPLATE, epicStatus, listEpicChildren } from './epic';
 import { orientNext } from './orient';
+import { sitrep } from './sitrep';
 import { assignmentWorkflow } from '../workflows';
 import {
   getIssue,
@@ -206,6 +207,9 @@ export async function runDxIntent(raw: string) {
   if (intent.kind === 'next') {
     return { intent, result: orientNext() };
   }
+  if (intent.kind === 'sitrep') {
+    return { intent, result: sitrep(intent.windowDays) };
+  }
   if (intent.kind === 'push_issue') {
     return { intent, result: await pushIssue(intent.issueNumber) };
   }
@@ -336,6 +340,7 @@ export async function runDxIntent(raw: string) {
       error: 'unknown_intent',
       hint: [
         'Empty / next: review goals + backlog, decide next action',
+        'Sitrep / standup / status: accomplished, blockers, coming up',
         'Execute: "192" | "complete M2" | "complete epic 50"',
         'Issue lifecycle: status|plan|critique|refine|update|narrow|widen|explain|close|reopen|create + #N',
         'Milestone lifecycle: status|plan|critique|refine|update|narrow|widen|explain|close|list|create + M2',

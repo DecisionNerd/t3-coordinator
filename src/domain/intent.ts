@@ -17,6 +17,7 @@ export type AdminVerb =
 
 export type ParsedIntent =
   | { kind: 'next' }
+  | { kind: 'sitrep'; windowDays?: number }
   | { kind: 'push_issue'; issueNumber: number }
   | { kind: 'complete_milestone'; milestone: string }
   | { kind: 'complete_epic'; epicNumber: number }
@@ -48,16 +49,24 @@ const ADMIN =
  * Map @t3-coordinator phrases to DX intents.
  *
  * Orient:  "" / "next" / "what next"
+ * Sitrep:  "sitrep" / "standup" / "status" / "check-in"
  * Execute: "192", "complete M2", "complete epic 50"
  * Shape:   "critique 192", "plan milestone M2", "status epic 50", "create epic"
  */
 export function parseIntent(raw: string): ParsedIntent {
   const text = raw.trim();
+
+  // Sitrep / standup check-in (before bare "status" colliding with orient)
+  const sitrepMatch = text.match(
+    /^(?:sit[\s-]?rep|standup|stand-up|check[\s-]?in|status(?:\s+report)?)(?:\s+(\d+)\s*d(?:ays?)?)?$/i,
+  );
+  if (sitrepMatch) {
+    const days = sitrepMatch[1] ? Number(sitrepMatch[1]) : undefined;
+    return { kind: 'sitrep', windowDays: days };
+  }
+
   // Empty @mention or explicit next → supervisor orientation brief
-  if (
-    !text ||
-    /^(next|what\s+next|orient|standup|status|go|continue|\?+)$/i.test(text)
-  ) {
+  if (!text || /^(next|what\s+next|orient|go|continue|\?+)$/i.test(text)) {
     return { kind: 'next' };
   }
 
